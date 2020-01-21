@@ -1,6 +1,6 @@
 use crate::dwcpn::modules::config::TIMESTEPS;
 
-pub fn generate_time_array(sunrise: f64) -> [f64; TIMESTEPS] {
+pub fn generate_time_array(sunrise: f64) -> ([f64; TIMESTEPS], f64) {
     let mut time_array: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
     let count = TIMESTEPS as f64;
     let delta_t: f64 = (12.0 - sunrise) / count;
@@ -10,7 +10,7 @@ pub fn generate_time_array(sunrise: f64) -> [f64; TIMESTEPS] {
         time_array[i] = sunrise + delta_t * i_f64;
     }
 
-    return time_array
+    return (time_array, delta_t)
 }
 
 pub fn compute_sunrise(jday: u16, lat: f64) -> (f64, f64, f64) {
