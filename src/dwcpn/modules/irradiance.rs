@@ -1,5 +1,4 @@
 use crate::dwcpn::modules::config::NUM_WAVELENGTHS;
-use test::NamePadding::PadNone;
 
 const TRANSMITTANCE_WL_COUNT: usize = 24;
 const TRANSMITTANCE_WAVELENGTHS: [f64; TRANSMITTANCE_WL_COUNT] = [
@@ -68,12 +67,12 @@ fn compute_rayleigh(airmass: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
 fn compute_aerosol_transmittance(airmass: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
     let mut ta: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
 
-    for w in 0..TRANSMITTANCE_WL_COUNT {
-        let wld = TRANSMITTANCE_WAVELENGTHS[w] / 1000.0; // NOTE: This is repeated a few times, worth a single pre-compute?
-        if i < 10 {
-            ta[w] = (-BETA1 * wld.powf(-ALPHA1) * airmass).exp();
+    for wl in 0..TRANSMITTANCE_WL_COUNT {
+        let wld = TRANSMITTANCE_WAVELENGTHS[wl] / 1000.0; // NOTE: This is repeated a few times, worth a single pre-compute?
+        if wl < 10 {
+            ta[wl] = (-BETA1 * wld.powf(-ALPHA1) * airmass).exp();
         } else {
-            ta[w] = (-BETA2 * wld.powf(-ALPHA2) * airmass).exp();
+            ta[wl] = (-BETA2 * wld.powf(-ALPHA2) * airmass).exp();
         }
     }
     ta
