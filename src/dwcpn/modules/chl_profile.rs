@@ -3,19 +3,6 @@ use std::f64::consts::PI;
 
 const TAU: f64 = PI * 2.0;
 
-pub struct ChlProfile {
-    pub depth_array: [f64; DEPTH_PROFILE_COUNT],
-    pub chl_profile: [f64; DEPTH_PROFILE_COUNT]
-}
-
-impl ChlProfile {
-    pub fn print_profile(&self) {
-        for i in 0..DEPTH_PROFILE_COUNT {
-            println!("{:?},{:?}", i, self.chl_profile[i]);
-        }
-    }
-}
-
 pub fn gen_chl_profile(surface_chl: f64, sigma: f64, rho: f64, z_m: f64, h: f64) -> ([f64; DEPTH_PROFILE_COUNT], [f64; DEPTH_PROFILE_COUNT]) {
     let gauss_height = h / ( sigma * TAU.sqrt() );
     let b_0: f64 = surface_chl / (1.0 + (rho / (1.0 - rho)) * ( -z_m.powf(2.0) / (2.0 * sigma.powf(2.0)) ).exp() );
