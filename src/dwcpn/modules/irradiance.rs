@@ -30,13 +30,15 @@ const BETA1: f64 = 0.1324;
 const ALPHA2: f64 = 1.206;
 const BETA2: f64 = 0.117;
 
-// correct factors for diffuse irradiance for 5 wavelengths and 7 zenith angles
-const CORRECTION: [[f64; 7]; 5] = [
-    [1.11, 1.13, 1.18, 1.24, 1.46, 1.70, 2.61],
-    [1.04, 1.05, 1.09, 1.11, 1.24, 1.34, 1.72],
-    [1.15, 1.00, 1.00, 0.99, 1.06, 1.07, 1.22],
-    [1.12, 0.96, 0.96, 0.94, 0.99, 0.96, 1.04],
-    [1.32, 1.12, 1.07, 1.02, 1.10, 0.90, 0.80]
+// correct factors for diffuse irradiance for 5 wavelengths at 7 zenith angles
+const CORRECTION: [[f64; 5]; 7] = [
+    [1.11, 1.04, 1.15, 1.12, 1.32],
+    [1.13, 1.05, 1.00, 0.96, 1.12],
+    [1.18, 1.09, 1.00, 0.96, 1.07],
+    [1.24, 1.11, 0.99, 0.94, 1.02],
+    [1.46, 1.24, 1.06, 0.99, 1.10],
+    [1.70, 1.34, 1.07, 0.96, 0.90],
+    [2.61, 1.72, 1.22, 1.04, 0.80]
 ];
 
 const CORRECTION_ZEN_LOOKUP: [f64; 7] = [0., 37., 48.19, 60., 70., 75., 80.];
@@ -104,17 +106,6 @@ fn compute_tu(airmass: f64) -> f64 {
     (-1.41 * 0.15 * airmass / (1.0 + 118.3 * 0.15 * airmass).powf(0.45)).exp()
 }
 
-// double* compute_air_albedo(wavelength_array_t *wl_array, double* ta, double* to, double* tr, double tu, double* tw){
-//    double* ro_s = (double*)malloc(sizeof(double) * wl_array->count);
-//
-//    int i;
-//    for (i = 0; i < wl_array->count; ++i){
-//        ro_s[i] = to[i] * tw[i] * (ta[i] * (1.0 - tr[i]) * 0.5 + tr[i] * (1 - ta[i]) * 0.22 * 0.928);
-//    }
-//    ro_s[23] = ro_s[23] * tu;
-//    return ro_s;
-//}
-
 fn compute_air_albedo(
     aerosol: [f64; TRANSMITTANCE_WL_COUNT],
     ozone: [f64; TRANSMITTANCE_WL_COUNT],
@@ -132,12 +123,73 @@ fn compute_air_albedo(
     rho_s
 }
 
-//double* compute_diffuse_irradiance(wavelength_array_t *wl_array, double zenith_d, double zenith_r, const double* direct, const double* ro_s, const double* ta, const double* to, const double* tr, double tu, const double* tw){
 
-//fn compute_diffuse_irradiance(
-//    zen_r: f64, zen_d: f64,
-//    direct_irradiance: [f64; NUM_WAVELENGTHS],
-//    ro
-//) -> [f64; NUM_WAVELENGTHS] {
-//
-//}
+// given the calculated zenith angle (DEGREES), look up the index of the correction
+// factors we need to use
+fn find_lut_index(zen_d: f64) -> usize {
+    for i in 0..CORRECTION_ZEN_LOOKUP.len() {
+        if zen_d < CORRECTION_ZEN_LOOKUP[i] {
+            return i
+        }
+    }
+    return CORRECTION_ZEN_LOOKUP.len() - 1
+}
+
+// take the correction factors for 5 wavelengths from the LUT and interpolate to the
+// number of wavelengths we are using in the transmittance calculations (24 at time of writing)
+fn interpolate_correction_factor(zen_d: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
+
+    let lut_index: usize = find_lut_index(zen_d);
+
+    let c: [f64; 5] = CORRECTION[lut_index];
+    let cm1: [f64; 5] = CORRECTION[lut_index - 1];
+
+    let fraction: f64 = (zen_d - CORRECTION_ZEN_LOOKUP[lut_index - 1]) / (CORRECTION_ZEN_LOOKUP[lut_index] - CORRECTION_ZEN_LOOKUP[lut_index - 1]);
+
+    let mut c1: [f64; 5] = [0.0; 5];
+    for i in 0..c.len() {
+        c1[i] = (c[i] - cm1[i]) * fraction + cm1[i];
+    }
+    let c1 = c1;
+
+    let mut c2: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
+
+    let mut cinc: f64 = 0.0;
+    let mut l: usize = 0;
+
+    c2[0] = c1[0];
+
+    for l1 in 1..4 {
+        cinc = (c1[l1 - 1] - c1[l1]) / 5.0;
+        for l2 in 0..5 {
+            l += 1;
+            c2[l] = c2[l - 1] - cinc;
+        }
+    }
+
+    // for the remaining wavelengths 550 -> 710nm
+    let cdif: f64 = c1[4] - c1[3];
+
+    let wldif = TRANSMITTANCE_WAVELENGTHS[16] - TRANSMITTANCE_WAVELENGTHS[TRANSMITTANCE_WL_COUNT - 1];
+
+    println!("{:?}", wldif);
+
+    [0.0; TRANSMITTANCE_WL_COUNT]
+
+}
+
+fn compute_diffuse_irradiance(
+    zen_r: f64, zen_d: f64,
+    direct_irradiance: [f64; NUM_WAVELENGTHS],
+    ro_s: [f64; NUM_WAVELENGTHS],
+    t_aerosol: [f64; NUM_WAVELENGTHS],
+    t_ozone: [f64; NUM_WAVELENGTHS],
+    t_rayleigh: [f64; NUM_WAVELENGTHS],
+    tu: f64,
+    t_water_vapour: [f64; NUM_WAVELENGTHS]
+) -> [f64; NUM_WAVELENGTHS] {
+
+    let correction_matrix: [f64; TRANSMITTANCE_WL_COUNT] = interpolate_correction_factor(zen_d);
+
+    [0.0; NUM_WAVELENGTHS]
+}
