@@ -1,2 +1,2 @@
 pub mod dwcpn;
-mod modules;
+pub mod modules;

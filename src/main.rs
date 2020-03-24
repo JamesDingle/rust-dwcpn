@@ -23,6 +23,6 @@ fn main() {
         par: 400.0,
     };
 
-    calc_pp(input);
+    println!("pp = {:?}", calc_pp(input));
 
 }
