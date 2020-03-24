@@ -63,7 +63,7 @@ pub fn calc_pp(input: InputParams) -> f64 {
         }
 
         // compute direct and diffuse irradiance components at sea level
-
+        let test = compute_diffuse_irradiance()
 
     }
 
