@@ -45,9 +45,10 @@ const MICRO: [f64; NUM_WAVELENGTHS] = [
     0.01480769,  0.01311538,  0.01067647,  0.00711765,  0.00355882,  0.
 ];
 
-pub fn calc_ac(chl: f64) -> [f64; NUM_WAVELENGTHS] {
+pub fn calc_ac(chl: f64) -> ([f64; NUM_WAVELENGTHS], f64) {
 
-    let mut result: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
+    let mut chlorophyll_absorption: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
+    let mut absorption_sum: f64 = 0.0;
 
     // coefficients
     // taken from Brewin et al 2011 and 2015
@@ -58,13 +59,21 @@ pub fn calc_ac(chl: f64) -> [f64; NUM_WAVELENGTHS] {
 
     // compute fractions
     for i in 0..NUM_WAVELENGTHS {
-        // TODO: Double check equation for PICO fraction");
-        let pico_fraction: f64 = cm_p * ( 1.0 - (-s_p * chl).exp() );
-        let nano_fraction: f64 = cm_pn * ( 1.0 - ( -s_pn * chl).exp() ) - pico_fraction;
-        let micro_fraction: f64 = chl - (cm_pn * ( 1.0 - (-s_pn * chl).exp() ));
+        let mut pico_absorption: f64 = cm_p * ( 1.0 - (-s_p * chl).exp() );
+        let mut nano_absorption: f64 = cm_pn * ( 1.0 - ( -s_pn * chl).exp() ) - pico_absorption;
+        let mut micro_absorption: f64 = chl - (cm_pn * ( 1.0 - (-s_pn * chl).exp() ));
 
-        result[i] = (PICO[i] * pico_fraction) + (NANO[i] * nano_fraction) + (MICRO[i] * micro_fraction);
+        // guarantee that no negative absorption gets through as it is phsyically impossible
+        if pico_absorption < 0.0 { pico_absorption = 0.0;};
+        if nano_absorption < 0.0 { nano_absorption = 0.0;};
+        if micro_absorption < 0.0 { micro_absorption = 0.0;};
+
+        chlorophyll_absorption[i] = (PICO[i] * pico_absorption) + (NANO[i] * nano_absorption) + (MICRO[i] * micro_absorption);
+        absorption_sum = absorption_sum + chlorophyll_absorption[i];
     }
 
-    return result;
+    let chlorophyll_absorption = chlorophyll_absorption; // de-mutify
+    let absorption_mean = absorption_sum / NUM_WAVELENGTHS as f64;
+
+    return (chlorophyll_absorption, absorption_mean);
 }
