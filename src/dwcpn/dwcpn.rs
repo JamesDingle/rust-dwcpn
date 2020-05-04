@@ -20,6 +20,9 @@ pub struct InputParams {
     pub cloud: f64,
     pub yel_sub: f64,
     pub par: f64,
+    pub bw: [f64; NUM_WAVELENGTHS],
+    pub bbr: [f64; NUM_WAVELENGTHS],
+    pub ay: [f64; NUM_WAVELENGTHS],
 }
 
 pub fn calc_pp(input: InputParams) -> f64 {
@@ -31,6 +34,8 @@ pub fn calc_pp(input: InputParams) -> f64 {
 
     let (time_array, delta_t) = generate_time_array(sunrise);
     let (zenith_array, zenith_d_array) = generate_zenith_array(time_array, delta, phi);
+
+
 
     // loop over time array (from sunrise to noon)
     let mut start_time_idx: f64 = -1.0;
