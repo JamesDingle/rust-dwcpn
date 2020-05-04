@@ -10,9 +10,9 @@ fn main() {
     // pre calculate bw/bbr/ay arrays for use in the pp_profile calculation later
     // this only needs to be done once for all pixels so I have it here, before we start
     // looping over pixels
-    bw = calculate_bw();
-    bbr = calculate_bbr();
-    ay = calculate_ay();
+    let bw = calculate_bw();
+    let bbr = calculate_bbr();
+    let ay = calculate_ay();
 
 
     let input = InputParams{
@@ -26,7 +26,7 @@ fn main() {
         chl: 0.1,
         rho: 0.1,
         h: 0.1,
-        sigma: 0.1,
+        sigma: 1.5,
         cloud: 0.0,
         yel_sub: 0.3,
         par: 400.0,

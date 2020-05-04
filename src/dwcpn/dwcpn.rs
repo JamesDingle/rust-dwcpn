@@ -1,9 +1,10 @@
 use crate::dwcpn::modules::chl_profile::gen_chl_profile;
 use crate::dwcpn::modules::time::{compute_sunrise, generate_time_array};
-use crate::dwcpn::modules::config::{TIMESTEPS, NUM_WAVELENGTHS, WAVELENGTHS};
+use crate::dwcpn::modules::config::{TIMESTEPS, NUM_WAVELENGTHS, WAVELENGTHS, DEPTH_PROFILE_COUNT, DEPTH_PROFILE_STEP};
 use crate::dwcpn::modules::zenith::generate_zenith_array;
 use crate::dwcpn::modules::irradiance::{compute_irradiance_components, lookup_thekaekara_correction};
 use std::f64::consts::PI;
+use crate::dwcpn::modules::pp_profile::compute_pp_depth_profile;
 
 pub struct InputParams {
     pub lat: f64,
@@ -25,7 +26,7 @@ pub struct InputParams {
     pub ay: [f64; NUM_WAVELENGTHS],
 }
 
-pub fn calc_pp(input: InputParams) -> f64 {
+pub fn calc_pp(input: InputParams) -> (f64, f64) {
     // generate chl depth profile
     let (depth_array, chl_profile) = gen_chl_profile(input.chl, input.sigma, input.rho, input.z_m, input.h);
 
@@ -149,7 +150,58 @@ pub fn calc_pp(input: InputParams) -> f64 {
             i_zero[t] = i_zero[t] + (direct[l] + diffuse[l]) * 5.0;
         }
 
+        let mut pp_profile = compute_pp_depth_profile(
+            chl_profile,
+            depth_array,
+            zenith_array[t],
+            direct,
+            diffuse,
+            input.bw,
+            input.bbr,
+            input.ay,
+            input.alpha_b,
+            input.pmb,
+            input.yel_sub
+        );
+
+        if pp_profile.success == true {
+            // clamp euphotic depth to bathymetry if it was calculated higher (in extreme clear water)
+            if pp_profile.euphotic_depth.abs() > input.z_bottom.abs() {
+                pp_profile.euphotic_depth_index = DEPTH_PROFILE_COUNT - 1;
+                pp_profile.euphotic_depth = input.z_bottom;
+            }
+
+            euphotic_depth[t] = pp_profile.euphotic_depth;
+
+            if pp_profile.euphotic_depth_index == 0 {
+                pp_profile.euphotic_depth_index == 1;
+            }
+
+            for z in 0..pp_profile.euphotic_depth_index {
+                pp[t] = pp[t] + DEPTH_PROFILE_STEP * (pp_profile.pp_profile[z] + pp_profile.pp_profile[z+1]) / 2.0;
+            }
+
+            pp[t] = pp[t] + pp_profile.pp_profile[pp_profile.euphotic_depth_index] * (euphotic_depth[t] - (pp_profile.euphotic_depth_index as f64 - 1.0) * DEPTH_PROFILE_STEP);
+
+
+        }
+
     }
 
-    0.0
+    let mut pp_day = pp[0] * delta_prestart / 2.0;
+    // let mut z_phot_day = euphotic_depth[0] * i_zero[0] * delta_prestart / 2.0;
+    // let mut i_zero_day = i_zero[0] * delta_prestart / 2.0;
+
+    let mut max_euphotic_depth = 0.0;
+
+    for t in 0..TIMESTEPS-1 {
+        pp_day = pp_day + ((pp[t] + pp[t+1]) * delta_t / 2.0);
+        if max_euphotic_depth < euphotic_depth[t] {
+            max_euphotic_depth = euphotic_depth[t];
+        }
+    }
+
+    // mutliply by two because we have only integrated over half of the day
+    pp_day = pp_day * 2.0;
+    return (pp_day, max_euphotic_depth)
 }

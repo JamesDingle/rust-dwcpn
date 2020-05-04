@@ -7,7 +7,7 @@ pub struct PpProfile {
     pub par_profile: [f64; DEPTH_PROFILE_COUNT],
     pub euphotic_depth: f64,
     pub euphotic_depth_index: usize,
-    pub success: bool;
+    pub success: bool
 }
 
 pub fn calculate_bw() -> [f64; NUM_WAVELENGTHS] {
@@ -86,6 +86,10 @@ pub fn compute_pp_depth_profile(
         // TODO: potentially rename to ac_mean
         let (ac, al_mean) = calc_ac(chl);
 
+        if al_mean == 0.0 {
+            continue
+        }
+
         let ac440 = ac[8]; // TODO: fix this to search for/interpolate to 440nm
 
         let power = -chl.log10();
@@ -103,7 +107,7 @@ pub fn compute_pp_depth_profile(
         let mut alpha_b = 0.0;
 
         for l in 0..NUM_WAVELENGTHS {
-            wl = WAVELENGTHS[l];
+            let wl = WAVELENGTHS[l];
             let a = AW[l] + ac[l] + ay440 * ay[l] + 2.0 * bbr[l];
             let mut bc = bc660 * (660.0 / wl).powf(power);
 
@@ -126,13 +130,19 @@ pub fn compute_pp_depth_profile(
         if z > 0 {
             if par_profile[z] < (0.01 * par_profile[0]) {
                 euphotic_depth_index = z - 1;
-                euphotic_depth = depth_profile[z - 1] + DEPTH_PROFILE_STEP * (100 * par_profile[z - 1] / par_profile[0]).ln() / (par_profile[z - 1] / par_profile[z]).ln();
-                success = true
+                euphotic_depth = depth_profile[z - 1] + DEPTH_PROFILE_STEP * (100.0 * par_profile[z - 1] / par_profile[0]).ln() / (par_profile[z - 1] / par_profile[z]).ln();
+                success = true;
+                return PpProfile{
+                    pp_profile,
+                    par_profile,
+                    euphotic_depth,
+                    euphotic_depth_index,
+                    success
+                }
             }
         }
 
     }
-
 
     return PpProfile{
         pp_profile,
