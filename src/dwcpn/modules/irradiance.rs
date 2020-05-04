@@ -1,5 +1,7 @@
-use crate::dwcpn::modules::config::NUM_WAVELENGTHS;
+use crate::dwcpn::modules::config::{NUM_WAVELENGTHS, WAVELENGTHS};
+use crate::dwcpn::modules::linear_interp::linear_interp;
 
+// DO NOT CHANGE THIS UNLESS YOU HAVE NEW LOOKUP TABLES FOR ALL OF THE BELOW CONST ARRAYS
 const TRANSMITTANCE_WL_COUNT: usize = 24;
 const TRANSMITTANCE_WAVELENGTHS: [f64; TRANSMITTANCE_WL_COUNT] = [
     400.000, 410.000, 420.000, 430.000, 440.000, 450.000, 460.000, 470.000,
@@ -43,6 +45,48 @@ const CORRECTION: [[f64; 5]; 7] = [
 
 const CORRECTION_ZEN_LOOKUP: [f64; 7] = [0., 37., 48.19, 60., 70., 75., 80.];
 
+// extra-terrestrial spectral irradiance
+const ET_SPECTRAL_IRRADIANCE: [f64; TRANSMITTANCE_WL_COUNT] = [
+    1479.1, 1701.3, 1740.4, 1587.2, 1837.0, 2005.0, 2043.0,
+    1987.0, 2027.0, 1896.0, 1909.0, 1927.0, 1831.0, 1891.0,
+    1898.0, 1892.0, 1840.0, 1768.0, 1728.0, 1658.0, 1524.0,
+    1531.0, 1420.0, 1399.0
+];
+
+
+pub fn lookup_thekaekara_correction(julian_day: u16) -> f64 {
+    let day_points: [f64; 25] = [
+        0.,   3.,   31.,  42.,  59.,
+        78.,  90.,  93.,  120., 133.,
+        151., 170., 181., 183., 206.,
+        212., 243., 265., 273., 277.,
+        304., 306., 334., 355., 365.
+    ];
+
+    let irradiance_points: [f64; 25] = [
+        1399., 1399., 1393., 1389., 1378.,
+        1364., 1355., 1353., 1332., 1324.,
+        1316., 1310., 1309., 1309., 1312.,
+        1313., 1329., 1344., 1350., 1353.,
+        1347., 1375., 1392., 1398., 1399.
+    ];
+
+    let mut idx: usize = 0;
+    for i in 0..25 {
+        idx = i;
+        if i >= julian_day as usize {
+            break;
+        }
+    }
+
+    if idx == 0 {
+        return irradiance_points[0]
+    } else {
+        let temp = (julian_day as f64 - day_points[idx - 1]) / (day_points[idx] - day_points[idx - 1]);
+        return irradiance_points[idx - 1] - (irradiance_points[idx - 1] - irradiance_points[idx]) * temp
+    }
+}
+
 fn compute_airmass(zen_r: f64, zen_d: f64) -> f64 {
     let mut airmass: f64;
 
@@ -60,7 +104,7 @@ fn compute_rayleigh(airmass: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
 
     for w in 0..TRANSMITTANCE_WL_COUNT {
         let wld = TRANSMITTANCE_WAVELENGTHS[w] / 1000.0;
-        tr[w] = (-airmass / wld.powf(4.0) * (115.6406 - 1.335 / wld.powf(2.0)));
+        tr[w] = -airmass / wld.powf(4.0) * (115.6406 - 1.335 / wld.powf(2.0));
     }
 
     tr
@@ -84,13 +128,12 @@ fn compute_water_vapour_transmittance(airmass: f64) -> [f64; TRANSMITTANCE_WL_CO
     let mut tw: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
 
     for w in 0..TRANSMITTANCE_WL_COUNT {
-        let wld = TRANSMITTANCE_WAVELENGTHS[w] / 1000.0; // NOTE: This is repeated a few times, worth a single pre-compute?
         tw[w] = (-0.3285 * WATER_VAPOUR_ABS[w] * (W + (1.42 - W) / 2.0) * airmass / (1.0 + 20.07 * WATER_VAPOUR_ABS[w] * airmass).powf(0.45)).exp()
     }
     tw
 }
 
-fn compute_ozone_transmittance(airmass: f64, zenith_r: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
+fn compute_ozone_transmittance(zenith_r: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
     let mut to: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
 
     for w in 0..TRANSMITTANCE_WL_COUNT {
@@ -111,16 +154,16 @@ fn compute_air_albedo(
     ozone: [f64; TRANSMITTANCE_WL_COUNT],
     rayleigh: [f64; TRANSMITTANCE_WL_COUNT],
     water_vapour: [f64; TRANSMITTANCE_WL_COUNT],
-    tu: f64
-) -> [f64; TRANSMITTANCE_WL_COUNT] {
-    let mut rho_s: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
+    tu: f64 ) -> [f64; TRANSMITTANCE_WL_COUNT] {
+
+    let mut air_albedo: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
 
     for w in 0.. TRANSMITTANCE_WL_COUNT {
-        rho_s[w] = ozone[w] * water_vapour[w] * (aerosol[w] * (1.0 - rayleigh[w]) * 0.5 + rayleigh[w] * (1.0 - aerosol[w]) * 0.22 * 0.928);
+        air_albedo[w] = ozone[w] * water_vapour[w] * (aerosol[w] * (1.0 - rayleigh[w]) * 0.5 + rayleigh[w] * (1.0 - aerosol[w]) * 0.22 * 0.928);
     }
 
-    rho_s[23] = rho_s[23] * tu;
-    rho_s
+    air_albedo[23] = air_albedo[23] * tu;
+    air_albedo
 }
 
 
@@ -146,50 +189,158 @@ fn interpolate_correction_factor(zen_d: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
 
     let fraction: f64 = (zen_d - CORRECTION_ZEN_LOOKUP[lut_index - 1]) / (CORRECTION_ZEN_LOOKUP[lut_index] - CORRECTION_ZEN_LOOKUP[lut_index - 1]);
 
-    let mut c1: [f64; 5] = [0.0; 5];
+    let mut correction: [f64; 5] = [0.0; 5];
     for i in 0..c.len() {
-        c1[i] = (c[i] - cm1[i]) * fraction + cm1[i];
+        correction[i] = (c[i] - cm1[i]) * fraction + cm1[i];
     }
-    let c1 = c1;
+    let correction = correction;
 
-    let mut c2: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
+    let mut correction_interpolated: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
 
-    let mut cinc: f64 = 0.0;
+    let mut c_inc: f64;
     let mut l: usize = 0;
 
-    c2[0] = c1[0];
+    correction_interpolated[0] = c[0];
 
     for l1 in 1..4 {
-        cinc = (c1[l1 - 1] - c1[l1]) / 5.0;
-        for l2 in 0..5 {
+        c_inc = (correction[l1 - 1] - correction[l1]) / 5.0;
+        for _l2 in 0..5 {
             l += 1;
-            c2[l] = c2[l - 1] - cinc;
+            correction_interpolated[l] = correction_interpolated[l - 1] - c_inc;
         }
     }
 
     // for the remaining wavelengths 550 -> 710nm
-    let cdif: f64 = c1[4] - c1[3];
-
+    let c_dif: f64 = correction[4] - correction[3];
     let wldif = TRANSMITTANCE_WAVELENGTHS[16] - TRANSMITTANCE_WAVELENGTHS[TRANSMITTANCE_WL_COUNT - 1];
 
-    println!("{:?}", wldif);
+    for l1 in 16..24 {
+        let wl_inc = WAVELENGTHS[l1] - WAVELENGTHS[l1 - 1] / wldif;
+        c_inc = c_dif * wl_inc;
+        l += 1;
+        correction_interpolated[l] = correction_interpolated[l - 1] + c_inc;
+    }
 
-    [0.0; TRANSMITTANCE_WL_COUNT]
+    return correction_interpolated
 
 }
 
 fn compute_diffuse_irradiance(
     zen_r: f64, zen_d: f64,
-    direct_irradiance: [f64; NUM_WAVELENGTHS],
-    ro_s: [f64; NUM_WAVELENGTHS],
-    t_aerosol: [f64; NUM_WAVELENGTHS],
-    t_ozone: [f64; NUM_WAVELENGTHS],
-    t_rayleigh: [f64; NUM_WAVELENGTHS],
+    direct_irradiance: [f64; TRANSMITTANCE_WL_COUNT],
+    air_albedo: [f64; TRANSMITTANCE_WL_COUNT],
+    t_aerosol: [f64; TRANSMITTANCE_WL_COUNT],
+    t_ozone: [f64; TRANSMITTANCE_WL_COUNT],
+    t_rayleigh: [f64; TRANSMITTANCE_WL_COUNT],
     tu: f64,
-    t_water_vapour: [f64; NUM_WAVELENGTHS]
-) -> [f64; NUM_WAVELENGTHS] {
+    t_water_vapour: [f64; TRANSMITTANCE_WL_COUNT]
+) -> [f64; TRANSMITTANCE_WL_COUNT] {
 
     let correction_matrix: [f64; TRANSMITTANCE_WL_COUNT] = interpolate_correction_factor(zen_d);
 
-    [0.0; NUM_WAVELENGTHS]
+    let mut diffuse: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
+
+        for l in 0..24 {
+            let xx = ET_SPECTRAL_IRRADIANCE[l] * zen_r.cos() * t_ozone[l] * t_water_vapour[l];
+            let mut r = xx * t_aerosol[l] * (1.0 - t_rayleigh[l]) * 0.5;
+            let mut a = xx * t_rayleigh[l] * (1.0 - t_aerosol[l] * 0.928 * 0.82);
+
+            if l == 22 {
+                r = r * tu;
+                a = a * tu;
+            }
+
+            let g = (direct_irradiance[l] * zen_r.cos() + (r + a) * correction_matrix[l]) * air_albedo[l] * 0.05 /
+                                                            (1.0 - 0.05 * air_albedo[l]);
+
+            diffuse[l] = (r + a) * correction_matrix[l] + g;
+        }
+
+    return diffuse
+}
+
+fn compute_direct_irradiance(
+    t_aerosol: [f64; TRANSMITTANCE_WL_COUNT],
+    t_ozone: [f64; TRANSMITTANCE_WL_COUNT],
+    t_rayleigh: [f64; TRANSMITTANCE_WL_COUNT],
+    tu: f64,
+    t_water_vapour: [f64; TRANSMITTANCE_WL_COUNT]
+) -> [f64; TRANSMITTANCE_WL_COUNT] {
+
+    let mut direct: [f64; TRANSMITTANCE_WL_COUNT] = [0.0; TRANSMITTANCE_WL_COUNT];
+
+    for i in 0..TRANSMITTANCE_WL_COUNT {
+        direct[i] = ET_SPECTRAL_IRRADIANCE[i] * t_rayleigh[i] * t_aerosol[i] * t_water_vapour[i] * t_ozone[i]
+    }
+    direct[23] *= tu;
+
+    direct
+}
+
+pub fn compute_irradiance_components(
+    zenith_r: f64,
+    zenith_d: f64
+) -> ([f64; NUM_WAVELENGTHS], [f64; NUM_WAVELENGTHS]) {
+
+    // use airmass estimate initially until we calculate air albedo and then we recalculate transmittances
+    let airmass = 1.90;
+
+    let t_rayleigh = compute_rayleigh(airmass);
+    let t_aerosol = compute_aerosol_transmittance(airmass);
+    let t_water_vapour = compute_water_vapour_transmittance(airmass);
+    let t_ozone = compute_ozone_transmittance(zenith_r);
+    let t_u = compute_tu(airmass);
+
+    let air_albedo = compute_air_albedo(t_aerosol, t_ozone, t_rayleigh, t_water_vapour, t_u);
+
+    let airmass = compute_airmass(zenith_r, zenith_d);
+    let t_rayleigh = compute_rayleigh(airmass);
+    let t_aerosol = compute_aerosol_transmittance(airmass);
+    let t_water_vapour = compute_water_vapour_transmittance(airmass);
+    let t_ozone = compute_ozone_transmittance(zenith_r);
+    let t_u = compute_tu(airmass);
+
+    let direct = compute_direct_irradiance(
+        t_aerosol,
+        t_ozone,
+        t_rayleigh,
+        t_u,
+        t_water_vapour
+    );
+
+    let diffuse = compute_diffuse_irradiance(
+        zenith_r,
+        zenith_d,
+        direct,
+        air_albedo,
+        t_aerosol,
+        t_ozone,
+        t_rayleigh,
+        t_u,
+        t_water_vapour
+    );
+
+    // let direct_interpolated = interpolate_irradiances_hardcoded(TRANSMITTANCE_WAVELENGTHS, direct);
+    // let diffuse_interpolated = interpolate_irradiances_hardcoded(TRANSMITTANCE_WAVELENGTHS, diffuse);
+
+    let direct_interpolated = interpolate_irradiances(TRANSMITTANCE_WAVELENGTHS,WAVELENGTHS, direct);
+    let diffuse_interpolated = interpolate_irradiances(TRANSMITTANCE_WAVELENGTHS,WAVELENGTHS, diffuse);
+
+    return (direct_interpolated, diffuse_interpolated)
+}
+
+fn interpolate_irradiances(
+    input_wavelengths: [f64; TRANSMITTANCE_WL_COUNT],
+    output_wavelengths: [f64; NUM_WAVELENGTHS],
+    input_irradiances: [f64; TRANSMITTANCE_WL_COUNT]
+) -> [f64; NUM_WAVELENGTHS] {
+
+    let mut output_irradiances: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
+
+    for i in 0..NUM_WAVELENGTHS {
+        output_irradiances[i] = linear_interp(&input_wavelengths, &input_irradiances, output_wavelengths[i]);
+    }
+
+    output_irradiances
+
 }
