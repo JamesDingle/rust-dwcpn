@@ -68,12 +68,13 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         // t_start is t_idx value when Zenith angle becomes >80 degrees
         // start_time is calculation start time, start_time_index is the index
         // delta_prestart is time elapsed between dawn and start_time
+        let start_time: f64;
         if start_time_idx < 0.0 {
             start_time_idx = t as f64;
 
             // this line has start_time_idx corrected with +1 as the original code
             // came from FORTRAN which uses indices that start at 1
-            let start_time: f64 = sunrise + delta_t * (start_time_idx + 1.0);
+            start_time = sunrise + delta_t * (start_time_idx + 1.0);
 
             day_length = 2.0 * (12.0 - (start_time - delta_t));
             iom = input.par * PI / (2.0 * day_length);
@@ -123,7 +124,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         surface_irradiance[t] = 0.0;
 
         for l in 0..NUM_WAVELENGTHS {
-            let wl_coefficient = WAVELENGTHS[l] * 36.0 / (19.87 * 6.022 * 10e7);
+            let wl_coefficient = WAVELENGTHS[l] * 36.0 / (19.87 * 6.022 * 10e6);
             direct[l] = direct[l] * wl_coefficient * zenith_array[t].cos();
             diffuse[l] = diffuse[l] * wl_coefficient;
 
@@ -173,9 +174,9 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
 
             euphotic_depth[t] = pp_profile.euphotic_depth;
 
-            if pp_profile.euphotic_depth_index == 0 {
-                pp_profile.euphotic_depth_index == 1;
-            }
+            // if pp_profile.euphotic_depth_index == 0 {
+            //     pp_profile.euphotic_depth_index == 1;
+            // }
 
             for z in 0..pp_profile.euphotic_depth_index {
                 pp[t] = pp[t] + DEPTH_PROFILE_STEP * (pp_profile.pp_profile[z] + pp_profile.pp_profile[z+1]) / 2.0;
