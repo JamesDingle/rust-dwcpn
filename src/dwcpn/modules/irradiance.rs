@@ -104,7 +104,7 @@ fn compute_rayleigh(airmass: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
 
     for w in 0..TRANSMITTANCE_WL_COUNT {
         let wld = TRANSMITTANCE_WAVELENGTHS[w] / 1000.0;
-        tr[w] = -airmass / wld.powf(4.0) * (115.6406 - 1.335 / wld.powf(2.0));
+        tr[w] = (-airmass / (wld.powf(4.0) * (115.6406 - 1.335 / wld.powf(2.0)))).exp();
     }
 
     tr
@@ -200,7 +200,7 @@ fn interpolate_correction_factor(zen_d: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
     let mut c_inc: f64;
     let mut l: usize = 0;
 
-    correction_interpolated[0] = c[0];
+    correction_interpolated[0] = correction[0];
 
     for l1 in 1..4 {
         c_inc = (correction[l1 - 1] - correction[l1]) / 5.0;
@@ -212,10 +212,10 @@ fn interpolate_correction_factor(zen_d: f64) -> [f64; TRANSMITTANCE_WL_COUNT] {
 
     // for the remaining wavelengths 550 -> 710nm
     let c_dif: f64 = correction[4] - correction[3];
-    let wldif = TRANSMITTANCE_WAVELENGTHS[16] - TRANSMITTANCE_WAVELENGTHS[TRANSMITTANCE_WL_COUNT - 1];
+    let wldif = TRANSMITTANCE_WAVELENGTHS[TRANSMITTANCE_WL_COUNT - 1] - TRANSMITTANCE_WAVELENGTHS[15];
 
     for l1 in 16..24 {
-        let wl_inc = WAVELENGTHS[l1] - WAVELENGTHS[l1 - 1] / wldif;
+        let wl_inc = (TRANSMITTANCE_WAVELENGTHS[l1] - TRANSMITTANCE_WAVELENGTHS[l1 - 1]) / wldif;
         c_inc = c_dif * wl_inc;
         l += 1;
         correction_interpolated[l] = correction_interpolated[l - 1] + c_inc;
@@ -319,9 +319,6 @@ pub fn compute_irradiance_components(
         t_u,
         t_water_vapour
     );
-
-    // let direct_interpolated = interpolate_irradiances_hardcoded(TRANSMITTANCE_WAVELENGTHS, direct);
-    // let diffuse_interpolated = interpolate_irradiances_hardcoded(TRANSMITTANCE_WAVELENGTHS, diffuse);
 
     let direct_interpolated = interpolate_irradiances(TRANSMITTANCE_WAVELENGTHS,WAVELENGTHS, direct);
     let diffuse_interpolated = interpolate_irradiances(TRANSMITTANCE_WAVELENGTHS,WAVELENGTHS, diffuse);
