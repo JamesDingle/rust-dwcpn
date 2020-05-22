@@ -16,7 +16,6 @@ pub struct InputParams {
     pub z_m: f64,
     pub chl: f64,
     pub rho: f64,
-    pub h: f64,
     pub sigma: f64,
     pub cloud: f64,
     pub yel_sub: f64,
@@ -28,7 +27,7 @@ pub struct InputParams {
 
 pub fn calc_pp(input: InputParams) -> (f64, f64) {
     // generate chl depth profile
-    let (depth_array, chl_profile) = gen_chl_profile(input.chl, input.sigma, input.rho, input.z_m, input.h);
+    let (depth_array, chl_profile) = gen_chl_profile(input.chl, input.sigma, input.rho, input.z_m);
 
     // compute sunrise and generate time array
     let (sunrise, delta, phi) = compute_sunrise(input.iday, input.lat);
