@@ -1,5 +1,6 @@
 use crate::dwcpn::modules::config::{DEPTH_PROFILE_COUNT, NUM_WAVELENGTHS, WAVELENGTHS, AW, DEPTH_PROFILE_STEP};
 use crate::dwcpn::modules::absorption::calc_ac;
+use crate::dwcpn::modules::linear_interp::linear_interp;
 
 
 pub struct PpProfile {
@@ -87,12 +88,24 @@ pub fn compute_pp_depth_profile(
         let (ac, al_mean) = calc_ac(chl);
 
         if al_mean == 0.0 {
-            continue
+            if z > 1 {
+                euphotic_depth_index = z - 1;
+                euphotic_depth = depth_profile[z - 1] + DEPTH_PROFILE_STEP * (100.0 * par_profile[z - 1] / par_profile[0]).ln() / (par_profile[z - 1] / par_profile[z]).ln();
+                success = true;
+                return PpProfile{
+                    pp_profile,
+                    par_profile,
+                    euphotic_depth,
+                    euphotic_depth_index,
+                    success
+                }
+            }
         }
 
-        let ac440 = ac[8]; // TODO: fix this to search for/interpolate to 440nm
+        // let ac440 = ac[8]; // TODO: fix this to search for/interpolate to 440nm
+        let ac440 = linear_interp(&WAVELENGTHS, &ac, 440.0);
 
-        let power = -chl.log10();
+        let power = -(chl.log10());
         let ay440 = yellow_substance * ac440;
 
         let bc660 = 0.407 * chl.powf(0.795);
@@ -118,14 +131,25 @@ pub fn compute_pp_depth_profile(
             k[l] = (a + bb) / mu_d[l];
 
             par_profile[z] = par_profile[z] + i_z[l] * 5.0;
+        }
 
+        for l in 0..NUM_WAVELENGTHS {
+            // this conversion expects pi_alpha to be in units of
+            // mgC mgChl^-1 h^-1 (W m^-2)^-1
+            // a.ka. (mgC per mgChl per Hour) / (Watts per m^2)
+            // the line below converts irradiance (light units) to einsteins per m^2 per hour
+            // this makes it compatible with the par units
             let x = province_alpha * ac[l] * 6022.0 / (2.77 * 36.0 * al_mean);
 
             alpha_b = alpha_b + x * 5.0 * i_z[l] / mu_d[l];
             i_z[l] = i_z[l] * (-k[l] * DEPTH_PROFILE_STEP).exp();
         }
 
+        // this is the old primary production equation.
+        // it has been updated after discussion with Shubha 2018/08/16
         pp_profile[z] = (alpha_b / (1.0 + (alpha_b / province_pmb).powf(2.0)).sqrt()) * chl;
+
+        pp_profile[z] = chl * province_pmb * ( 1.0 - (alpha_b / province_pmb).exp() );
 
         if z > 0 {
             if par_profile[z] < (0.01 * par_profile[0]) {
