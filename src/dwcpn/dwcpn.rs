@@ -48,7 +48,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
     let mut surface_irradiance: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
     let mut par_surface_irradiance: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
     let mut adjustment: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
-    let mut i_zero: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
+    let mut i_z: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
 
     // arrays to store results
     let mut pp: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
@@ -67,7 +67,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         // t_start is t_idx value when Zenith angle becomes >80 degrees
         // start_time is calculation start time, start_time_index is the index
         // delta_prestart is time elapsed between dawn and start_time
-        let start_time: f64;
+        let mut start_time: f64 = 0.0;
         if start_time_idx < 0.0 {
             start_time_idx = t as f64;
 
@@ -134,7 +134,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         }
 
         // compute surface irradiance from total daily surface irradiance (e.g. satellite par)
-        par_surface_irradiance[t] = iom * (PI * (time_array[t] - sunrise) / day_length).sin();
+        par_surface_irradiance[t] = iom * (PI * (time_array[t] - (start_time - delta_t)) / day_length).sin();
         surface_irradiance[t] = surface_irradiance[t] * 5.0;
 
         // Adjustment to the difuse and direct component: from use of measured total daily surface irradiance (
@@ -142,12 +142,12 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         adjustment[t] = par_surface_irradiance[t] / surface_irradiance[t];
 
         //compute the adjusted irradiance surface value
-        i_zero[t] = 0.0;
+        i_z[0] = 0.0;
         for l in 0..NUM_WAVELENGTHS {
             direct[l] = direct[l] * adjustment[t];
             diffuse[l] = diffuse[l] * adjustment[t];
 
-            i_zero[t] = i_zero[t] + (direct[l] + diffuse[l]) * 5.0;
+            i_z[0] = i_z[0] + (direct[l] + diffuse[l]) * 5.0;
         }
 
         let mut pp_profile = compute_pp_depth_profile(

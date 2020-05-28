@@ -147,7 +147,7 @@ pub fn compute_pp_depth_profile(
 
         // this is the old primary production equation.
         // it has been updated after discussion with Shubha 2018/08/16
-        pp_profile[z] = (alpha_b / (1.0 + (alpha_b / province_pmb).powf(2.0)).sqrt()) * chl;
+        // pp_profile[z] = (alpha_b / (1.0 + (alpha_b / province_pmb).powf(2.0)).sqrt()) * chl;
 
         pp_profile[z] = chl * province_pmb * ( 1.0 - (alpha_b / province_pmb).exp() );
 

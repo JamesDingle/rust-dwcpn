@@ -16,20 +16,19 @@ fn main() {
 
 
     let input = InputParams{
-        lat: 45.0,
-        lon: 45.0,
-        z_bottom: 100.0,
-        iday: 100,
-        alpha_b: 1.0,
-        pmb: 1.0,
-        z_m: 20.0,
+        lat: 31.5,
+        lon: -64.0,
+        z_bottom: -4430.55615573459,
+        iday: 5,
+        alpha_b: 0.1893,
+        pmb: 4.662,
+        z_m: 74.7,
         chl: 1.0,
         rho: 0.1,
-        h: 1.0,
         sigma: 1.5,
         cloud: 0.0,
         yel_sub: 0.3,
-        par: 400.0,
+        par: 20.8093246830834,
         bw,
         bbr,
         ay
