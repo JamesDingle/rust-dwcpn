@@ -31,7 +31,8 @@ fn main() {
     let ay = calculate_ay();
 
     // let filename = "/home/jad/Downloads/pp_gku_params_2003_07.nc";
-    let filename = "pp_processing_20100501_30.000_50.000_-140.000_-120.000.nc";
+    // let filename = "pp_processing_20100501_30.000_50.000_-140.000_-120.000.nc";
+    let filename = "/tmp/ppws/pp_processing_19980101_-50.000_-30.000_160.000_180.000.nc";
 
     let ncfile = netcdf::append(&filename).unwrap();
 
@@ -54,11 +55,11 @@ fn main() {
     let mut pp:netcdf::variable::VariableMut = ncfile2.variable_mut("pp").unwrap();
 
     let count = lat.len() * lon.len();
-    // let mut pb = ProgressBar::new(count as u64);
+    let mut pb = ProgressBar::new(count as u64);
 
     for y in 0..lat.len() {
         for x in 0..lon.len() {
-            // pb.inc();
+            pb.inc();
             let input = InputParams{
                 lat: lat.value(Some(&[y])).unwrap(),
                 lon: lon.value(Some(&[x])).unwrap(),
@@ -77,28 +78,16 @@ fn main() {
                 bbr,
                 ay
             };
-            if input.chl == 9969209968386869000000000000000000000.0 {
-                pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
-                continue
-            } else if input.par == 9969209968386869000000000000000000000.0 {
-                pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
-                continue
-            } else if input.z_bottom == 9969209968386869000000000000000000000.0 {
-                pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
-                continue
-            } else if input.alpha_b == 9969209968386869000000000000000000000.0 {
-                pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
-                continue
-            } else if input.pmb == 9969209968386869000000000000000000000.0 {
-                pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
-                continue
-            } else if input.z_m == 9969209968386869000000000000000000000.0 {
-                pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
-                continue
-            } else if input.rho == 9969209968386869000000000000000000000.0 {
-                pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
-                continue
-            } else if input.sigma == 9969209968386869000000000000000000000.0 {
+
+            if (input.chl == 9969209968386869000000000000000000000.0) ||
+                (input.par == 9969209968386869000000000000000000000.0) ||
+                (input.z_bottom == 9969209968386869000000000000000000000.0) ||
+                (input.alpha_b == 9969209968386869000000000000000000000.0) ||
+                (input.pmb == 9969209968386869000000000000000000000.0) ||
+                (input.z_m == 9969209968386869000000000000000000000.0) ||
+                (input.rho == 9969209968386869000000000000000000000.0) ||
+                (input.sigma == 9969209968386869000000000000000000000.0) {
+
                 pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
                 continue
             }
