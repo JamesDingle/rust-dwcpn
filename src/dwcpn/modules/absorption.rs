@@ -1,6 +1,6 @@
-use crate::dwcpn::modules::config::NUM_WAVELENGTHS;
+use crate::dwcpn::modules::config::WL_COUNT;
 
-const NANO: [f64; NUM_WAVELENGTHS] = [
+const NANO: [f64; WL_COUNT] = [
     0.016     ,  0.0176    ,  0.02426667,  0.0265625 ,  0.02776562,
     0.02896875,  0.03017188,  0.031375  ,  0.03257812,  0.03241667,
     0.03020833,  0.028     ,  0.03135   ,  0.0347    ,  0.03242917,
@@ -15,7 +15,7 @@ const NANO: [f64; NUM_WAVELENGTHS] = [
     0.02020769,  0.02051538,  0.01826471,  0.01217647,  0.00608824,  0.
 ];
 
-const PICO: [f64; NUM_WAVELENGTHS] = [
+const PICO: [f64; WL_COUNT] = [
     0.09572727,  0.1053    ,  0.11313333,  0.1197625 ,  0.12609063,
     0.13241875,  0.13874687,  0.145075  ,  0.15140312,  0.15406667,
     0.15123333,  0.1484    ,  0.1401    ,  0.1318    ,  0.12582083,
@@ -30,7 +30,7 @@ const PICO: [f64; NUM_WAVELENGTHS] = [
     0.03156923,  0.02833846,  0.02329412,  0.01552941,  0.00776471,  0.
 ];
 
-const MICRO: [f64; NUM_WAVELENGTHS] = [
+const MICRO: [f64; WL_COUNT] = [
     0.01518182,  0.0167    ,  0.01686667,  0.0176    ,  0.018475  ,
     0.01935   ,  0.020225  ,  0.0211    ,  0.021975  ,  0.02213333,
     0.02121667,  0.0203    ,  0.01925   ,  0.0182    ,  0.0173875 ,
@@ -45,9 +45,9 @@ const MICRO: [f64; NUM_WAVELENGTHS] = [
     0.01480769,  0.01311538,  0.01067647,  0.00711765,  0.00355882,  0.
 ];
 
-pub fn calc_ac(chl: f64) -> ([f64; NUM_WAVELENGTHS], f64) {
+pub fn calc_ac(chl: f64) -> ([f64; WL_COUNT], f64) {
 
-    let mut chlorophyll_absorption: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
+    let mut chlorophyll_absorption: [f64; WL_COUNT] = [0.0; WL_COUNT];
     let mut absorption_sum: f64 = 0.0;
 
     // coefficients
@@ -58,7 +58,7 @@ pub fn calc_ac(chl: f64) -> ([f64; NUM_WAVELENGTHS], f64) {
     let s_p: f64 = 0.80 / cm_p;
 
     // compute fractions
-    for i in 0..NUM_WAVELENGTHS {
+    for i in 0..WL_COUNT {
         let mut pico_absorption: f64 = cm_p * ( 1.0 - (-s_p * chl).exp() );
         let mut nano_absorption: f64 = cm_pn * ( 1.0 - ( -s_pn * chl).exp() ) - pico_absorption;
         let mut micro_absorption: f64 = chl - (cm_pn * ( 1.0 - (-s_pn * chl).exp() ));
@@ -73,7 +73,7 @@ pub fn calc_ac(chl: f64) -> ([f64; NUM_WAVELENGTHS], f64) {
     }
 
     let chlorophyll_absorption = chlorophyll_absorption; // de-mutify
-    let absorption_mean = absorption_sum / NUM_WAVELENGTHS as f64;
+    let absorption_mean = absorption_sum / WL_COUNT as f64;
 
     return (chlorophyll_absorption, absorption_mean);
 }

@@ -1,4 +1,4 @@
-use crate::dwcpn::modules::config::{DEPTH_PROFILE_COUNT, NUM_WAVELENGTHS, WAVELENGTHS, AW, DEPTH_PROFILE_STEP};
+use crate::dwcpn::modules::config::{DEPTH_PROFILE_COUNT, WL_COUNT, WL_ARRAY, AW, DEPTH_PROFILE_STEP};
 use crate::dwcpn::modules::absorption::calc_ac;
 use crate::dwcpn::modules::linear_interp::linear_interp;
 
@@ -11,37 +11,37 @@ pub struct PpProfile {
     pub success: bool
 }
 
-pub fn calculate_bw() -> [f64; NUM_WAVELENGTHS] {
+pub fn calculate_bw() -> [f64; WL_COUNT] {
 
     // scattering coefficient of pure seawater at 500nm
     const BW500: f64 = 0.00288;
 
-    let mut bw: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
+    let mut bw: [f64; WL_COUNT] = [0.0; WL_COUNT];
 
-    for i in 0..NUM_WAVELENGTHS {
-        bw[i] = BW500 * (WAVELENGTHS[i] / 500.0).powf(-4.3);
+    for i in 0..WL_COUNT {
+        bw[i] = BW500 * (WL_ARRAY[i] / 500.0).powf(-4.3);
     }
 
     bw
 }
 
-pub fn calculate_bbr() -> [f64; NUM_WAVELENGTHS] {
+pub fn calculate_bbr() -> [f64; WL_COUNT] {
     const BR488: f64 = 0.00027;
 
-    let mut bbr: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
+    let mut bbr: [f64; WL_COUNT] = [0.0; WL_COUNT];
 
-    for i in 0..NUM_WAVELENGTHS {
-        bbr[i] = 0.5 * BR488 * (WAVELENGTHS[i] / 488.0).powf(-5.3);
+    for i in 0..WL_COUNT {
+        bbr[i] = 0.5 * BR488 * (WL_ARRAY[i] / 488.0).powf(-5.3);
     }
 
     bbr
 }
 
-pub fn calculate_ay() -> [f64; NUM_WAVELENGTHS] {
-    let mut ay: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
+pub fn calculate_ay() -> [f64; WL_COUNT] {
+    let mut ay: [f64; WL_COUNT] = [0.0; WL_COUNT];
 
-    for i in 0..NUM_WAVELENGTHS {
-        ay[i] = (-0.014 * (WAVELENGTHS[i] - 440.0)).exp();
+    for i in 0..WL_COUNT {
+        ay[i] = (-0.014 * (WL_ARRAY[i] - 440.0)).exp();
     }
 
     ay
@@ -51,11 +51,11 @@ pub fn compute_pp_depth_profile(
     chl_profile: [f64; DEPTH_PROFILE_COUNT],
     depth_profile: [f64; DEPTH_PROFILE_COUNT],
     zenith_r: f64,
-    direct_irradiance: [f64; NUM_WAVELENGTHS],
-    diffuse_irradiance: [f64; NUM_WAVELENGTHS],
-    bw: [f64; NUM_WAVELENGTHS],
-    bbr: [f64; NUM_WAVELENGTHS],
-    ay: [f64; NUM_WAVELENGTHS],
+    direct_irradiance: [f64; WL_COUNT],
+    diffuse_irradiance: [f64; WL_COUNT],
+    bw: [f64; WL_COUNT],
+    bbr: [f64; WL_COUNT],
+    ay: [f64; WL_COUNT],
     province_alpha: f64,
     province_pmb: f64,
     yellow_substance: f64
@@ -68,14 +68,14 @@ pub fn compute_pp_depth_profile(
 
 
 
-    let mut i_zero: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
-    let mut mu_d: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
-    let mut i_z: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
-    let mut k: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
+    let mut i_zero: [f64; WL_COUNT] = [0.0; WL_COUNT];
+    let mut mu_d: [f64; WL_COUNT] = [0.0; WL_COUNT];
+    let mut i_z: [f64; WL_COUNT] = [0.0; WL_COUNT];
+    let mut k: [f64; WL_COUNT] = [0.0; WL_COUNT];
 
     let zenith_w: f64 = (zenith_r.sin() / 1.333).asin();
 
-    for l in 0..NUM_WAVELENGTHS {
+    for l in 0..WL_COUNT {
         i_zero[l] = direct_irradiance[l] + diffuse_irradiance[l];
         mu_d[l] = (direct_irradiance[l] * zenith_w.cos() + diffuse_irradiance[l] * 0.831000) / i_zero[l];
         i_z[l] = i_zero[l];
@@ -103,7 +103,7 @@ pub fn compute_pp_depth_profile(
         }
 
         // let ac440 = ac[8]; // TODO: fix this to search for/interpolate to 440nm
-        let ac440 = linear_interp(&WAVELENGTHS, &ac, 440.0);
+        let ac440 = linear_interp(&WL_ARRAY, &ac, 440.0);
 
         let power = -(chl.log10());
         let ay440 = yellow_substance * ac440;
@@ -117,8 +117,8 @@ pub fn compute_pp_depth_profile(
             bbtilda = 0.01;
         }
 
-        for l in 0..NUM_WAVELENGTHS {
-            let wl = WAVELENGTHS[l];
+        for l in 0..WL_COUNT {
+            let wl = WL_ARRAY[l];
             let a = AW[l] + ac[l] + ay440 * ay[l] + 2.0 * bbr[l];
             let mut bc = bc660 * (660.0 / wl).powf(power);
 
@@ -132,7 +132,7 @@ pub fn compute_pp_depth_profile(
         }
 
         let mut i_alpha = 0.0;
-        for l in 0..NUM_WAVELENGTHS {
+        for l in 0..WL_COUNT {
             // this conversion expects pi_alpha to be in units of
             // mgC mgChl^-1 h^-1 (W m^-2)^-1
             // a.ka. (mgC per mgChl per Hour) / (Watts per m^2)

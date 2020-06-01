@@ -1,4 +1,4 @@
-use crate::dwcpn::modules::config::{NUM_WAVELENGTHS, WAVELENGTHS};
+use crate::dwcpn::modules::config::{WL_COUNT, WL_ARRAY};
 use crate::dwcpn::modules::linear_interp::linear_interp;
 
 // DO NOT CHANGE THIS UNLESS YOU HAVE NEW LOOKUP TABLES FOR ALL OF THE BELOW CONST ARRAYS
@@ -280,7 +280,7 @@ fn compute_direct_irradiance(
 pub fn compute_irradiance_components(
     zenith_r: f64,
     zenith_d: f64
-) -> ([f64; NUM_WAVELENGTHS], [f64; NUM_WAVELENGTHS]) {
+) -> ([f64; WL_COUNT], [f64; WL_COUNT]) {
 
     // use airmass estimate initially until we calculate air albedo and then we recalculate transmittances
     let airmass = 1.90;
@@ -320,21 +320,21 @@ pub fn compute_irradiance_components(
         t_water_vapour
     );
 
-    let direct_interpolated = interpolate_irradiances(TRANSMITTANCE_WAVELENGTHS,WAVELENGTHS, direct);
-    let diffuse_interpolated = interpolate_irradiances(TRANSMITTANCE_WAVELENGTHS,WAVELENGTHS, diffuse);
+    let direct_interpolated = interpolate_irradiances(TRANSMITTANCE_WAVELENGTHS, WL_ARRAY, direct);
+    let diffuse_interpolated = interpolate_irradiances(TRANSMITTANCE_WAVELENGTHS, WL_ARRAY, diffuse);
 
     return (direct_interpolated, diffuse_interpolated)
 }
 
 fn interpolate_irradiances(
     input_wavelengths: [f64; TRANSMITTANCE_WL_COUNT],
-    output_wavelengths: [f64; NUM_WAVELENGTHS],
+    output_wavelengths: [f64; WL_COUNT],
     input_irradiances: [f64; TRANSMITTANCE_WL_COUNT]
-) -> [f64; NUM_WAVELENGTHS] {
+) -> [f64; WL_COUNT] {
 
-    let mut output_irradiances: [f64; NUM_WAVELENGTHS] = [0.0; NUM_WAVELENGTHS];
+    let mut output_irradiances: [f64; WL_COUNT] = [0.0; WL_COUNT];
 
-    for i in 0..NUM_WAVELENGTHS {
+    for i in 0..WL_COUNT {
         output_irradiances[i] = linear_interp(&input_wavelengths, &input_irradiances, output_wavelengths[i]);
     }
 

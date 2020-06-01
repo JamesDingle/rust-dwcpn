@@ -1,6 +1,6 @@
 use crate::dwcpn::modules::chl_profile::gen_chl_profile;
 use crate::dwcpn::modules::time::{compute_sunrise, generate_time_array};
-use crate::dwcpn::modules::config::{TIMESTEPS, NUM_WAVELENGTHS, WAVELENGTHS, DEPTH_PROFILE_COUNT, DEPTH_PROFILE_STEP};
+use crate::dwcpn::modules::config::{TIMESTEPS, WL_COUNT, WL_ARRAY, DEPTH_PROFILE_COUNT, DEPTH_PROFILE_STEP};
 use crate::dwcpn::modules::zenith::generate_zenith_array;
 use crate::dwcpn::modules::irradiance::{compute_irradiance_components, lookup_thekaekara_correction};
 use std::f64::consts::PI;
@@ -20,9 +20,9 @@ pub struct InputParams {
     pub cloud: f64,
     pub yel_sub: f64,
     pub par: f64,
-    pub bw: [f64; NUM_WAVELENGTHS],
-    pub bbr: [f64; NUM_WAVELENGTHS],
-    pub ay: [f64; NUM_WAVELENGTHS],
+    pub bw: [f64; WL_COUNT],
+    pub bbr: [f64; WL_COUNT],
+    pub ay: [f64; WL_COUNT],
 }
 
 pub fn calc_pp(input: InputParams) -> (f64, f64) {
@@ -87,7 +87,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         let mut direct_integrated: f64 = 0.0;
         let mut diffuse_integrated: f64 = 0.0;
 
-        for l in 0..NUM_WAVELENGTHS {
+        for l in 0..WL_COUNT {
             // apply fractional correction to diffuse and direct components of irradiance
             // the max correction value is 1353.0, so this converts it to as though we were applying a percentage correction
             direct[l] = direct[l] * solar_correction / 1353.0;
@@ -109,7 +109,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         let dir_div = idir1 / direct_integrated;
         let dif_div = idif1 / diffuse_integrated;
 
-        for l in 0..NUM_WAVELENGTHS {
+        for l in 0..WL_COUNT {
             direct[l] = direct[l] + dir_div;
             diffuse[l] = diffuse[l] + dif_div;
         }
@@ -122,8 +122,8 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         // recompute surface irradiance across spectrum
         surface_irradiance[t] = 0.0;
 
-        for l in 0..NUM_WAVELENGTHS {
-            let wl_coefficient = WAVELENGTHS[l] * 36.0 / (19.87 * 6.022 * 10e6);
+        for l in 0..WL_COUNT {
+            let wl_coefficient = WL_ARRAY[l] * 36.0 / (19.87 * 6.022 * 10e6);
             direct[l] = direct[l] * wl_coefficient * zenith_array[t].cos();
             diffuse[l] = diffuse[l] * wl_coefficient;
 
@@ -143,7 +143,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
 
         //compute the adjusted irradiance surface value
         i_zero[t] = 0.0;
-        for l in 0..NUM_WAVELENGTHS {
+        for l in 0..WL_COUNT {
             direct[l] = direct[l] * adjustment[t];
             diffuse[l] = diffuse[l] * adjustment[t];
 

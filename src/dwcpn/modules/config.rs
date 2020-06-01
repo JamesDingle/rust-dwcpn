@@ -4,9 +4,9 @@ pub const DEPTH_PROFILE_COUNT: usize = 100;
 pub const DEPTH_PROFILE_STEP: f64 = 2.5;
 pub const DEPTH_PROFILE_START: f64 = 0.0;
 
-pub const NUM_WAVELENGTHS: usize = 61;
+pub const WL_COUNT: usize = 61;
 
-pub const WAVELENGTHS: [f64; NUM_WAVELENGTHS] = [
+pub const WL_ARRAY: [f64; WL_COUNT] = [
     400.0, 405.0, 410.0, 415.0, 420.0, 425.0, 430.0, 435.0, 440.0, 445.0, 450.0, 455.0, 460.0,
     465.0, 470.0, 475.0, 480.0, 485.0, 490.0, 495.0, 500.0, 505.0, 510.0, 515.0, 520.0, 525.0,
     530.0, 535.0, 540.0, 545.0, 550.0, 555.0, 560.0, 565.0, 570.0, 575.0, 580.0, 585.0, 590.0,
@@ -14,7 +14,7 @@ pub const WAVELENGTHS: [f64; NUM_WAVELENGTHS] = [
     660.0, 665.0, 670.0, 675.0, 680.0, 685.0, 690.0, 695.0, 700.0
 ];
 
-pub const AW: [f64; NUM_WAVELENGTHS] = [
+pub const AW: [f64; WL_COUNT] = [
     0.00663, 0.00530, 0.00473, 0.00444,
     0.00454, 0.00478, 0.00495, 0.00530,
     0.00635, 0.00751, 0.00922, 0.00962,
