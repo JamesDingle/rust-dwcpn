@@ -7,7 +7,7 @@ pub struct PpProfile {
     pub pp_profile: [f64; DEPTH_PROFILE_COUNT],
     pub par_profile: [f64; DEPTH_PROFILE_COUNT],
     pub euphotic_depth: f64,
-    pub euphotic_depth_index: usize,
+    pub euph_index: usize,
     pub success: bool
 }
 
@@ -63,7 +63,7 @@ pub fn compute_pp_depth_profile(
     let mut pp_profile: [f64; DEPTH_PROFILE_COUNT] = [0.0; DEPTH_PROFILE_COUNT];
     let mut par_profile: [f64; DEPTH_PROFILE_COUNT] = [0.0; DEPTH_PROFILE_COUNT];
     let mut euphotic_depth: f64 = 0.0;
-    let mut euphotic_depth_index: usize = 0;
+    let mut euph_index: usize = 0;
     let mut success = false;
 
 
@@ -89,14 +89,14 @@ pub fn compute_pp_depth_profile(
 
         if al_mean == 0.0 {
             if z > 1 {
-                euphotic_depth_index = z - 1;
-                euphotic_depth = depth_profile[z - 1] + DEPTH_PROFILE_STEP * (100.0 * par_profile[z - 1] / par_profile[0]).ln() / (par_profile[z - 1] / par_profile[z]).ln();
+                euph_index = z - 1;
+                euphotic_depth = depth_profile[euph_index] + DEPTH_PROFILE_STEP * (100.0 * par_profile[euph_index] / par_profile[0]).ln() / (par_profile[euph_index] / par_profile[z]).ln();
                 success = true;
                 return PpProfile{
                     pp_profile,
                     par_profile,
                     euphotic_depth,
-                    euphotic_depth_index,
+                    euph_index,
                     success
                 }
             }
@@ -117,8 +117,6 @@ pub fn compute_pp_depth_profile(
             bbtilda = 0.01;
         }
 
-        let mut alpha_b = 0.0;
-
         for l in 0..NUM_WAVELENGTHS {
             let wl = WAVELENGTHS[l];
             let a = AW[l] + ac[l] + ay440 * ay[l] + 2.0 * bbr[l];
@@ -133,6 +131,7 @@ pub fn compute_pp_depth_profile(
             par_profile[z] = par_profile[z] + i_z[l] * 5.0;
         }
 
+        let mut i_alpha = 0.0;
         for l in 0..NUM_WAVELENGTHS {
             // this conversion expects pi_alpha to be in units of
             // mgC mgChl^-1 h^-1 (W m^-2)^-1
@@ -141,26 +140,26 @@ pub fn compute_pp_depth_profile(
             // this makes it compatible with the par units
             let x = province_alpha * ac[l] * 6022.0 / (2.77 * 36.0 * al_mean);
 
-            alpha_b = alpha_b + x * 5.0 * i_z[l] / mu_d[l];
+            i_alpha = i_alpha + x * 5.0 * i_z[l] / mu_d[l];
             i_z[l] = i_z[l] * (-k[l] * DEPTH_PROFILE_STEP).exp();
         }
 
         // this is the old primary production equation.
         // it has been updated after discussion with Shubha 2018/08/16
-        pp_profile[z] = (alpha_b / (1.0 + (alpha_b / province_pmb).powf(2.0)).sqrt()) * chl;
+        // pp_profile[z] = (i_alpha / (1.0 + (i_alpha / province_pmb).powf(2.0)).sqrt()) * chl;
 
-        pp_profile[z] = chl * province_pmb * ( 1.0 - (alpha_b / province_pmb).exp() );
+        pp_profile[z] = chl * province_pmb * ( 1.0 - ((-i_alpha) / province_pmb).exp() );
 
         if z > 0 {
             if par_profile[z] < (0.01 * par_profile[0]) {
-                euphotic_depth_index = z - 1;
-                euphotic_depth = depth_profile[z - 1] + DEPTH_PROFILE_STEP * (100.0 * par_profile[z - 1] / par_profile[0]).ln() / (par_profile[z - 1] / par_profile[z]).ln();
+                euph_index = z - 1;
+                euphotic_depth = depth_profile[euph_index] + DEPTH_PROFILE_STEP * (100.0 * par_profile[euph_index] / par_profile[0]).ln() / (par_profile[euph_index] / par_profile[z]).ln();
                 success = true;
                 return PpProfile{
                     pp_profile,
                     par_profile,
                     euphotic_depth,
-                    euphotic_depth_index,
+                    euph_index,
                     success
                 }
             }
@@ -172,7 +171,7 @@ pub fn compute_pp_depth_profile(
         pp_profile,
         par_profile,
         euphotic_depth,
-        euphotic_depth_index,
+        euph_index,
         success
     }
 }
