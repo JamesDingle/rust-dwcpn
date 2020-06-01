@@ -167,21 +167,21 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         if pp_profile.success == true {
             // clamp euphotic depth to bathymetry if it was calculated higher (in extreme clear water)
             if pp_profile.euphotic_depth.abs() > input.z_bottom.abs() {
-                pp_profile.euphotic_depth_index = DEPTH_PROFILE_COUNT - 1;
+                pp_profile.euph_index = DEPTH_PROFILE_COUNT - 1;
                 pp_profile.euphotic_depth = input.z_bottom;
             }
 
             euphotic_depth[t] = pp_profile.euphotic_depth;
 
-            // if pp_profile.euphotic_depth_index == 0 {
-            //     pp_profile.euphotic_depth_index == 1;
+            // if pp_profile.euph_index == 0 {
+            //     pp_profile.euph_index == 1;
             // }
 
-            for z in 0..pp_profile.euphotic_depth_index {
+            for z in 0..pp_profile.euph_index {
                 pp[t] = pp[t] + DEPTH_PROFILE_STEP * (pp_profile.pp_profile[z] + pp_profile.pp_profile[z+1]) / 2.0;
             }
 
-            pp[t] = pp[t] + pp_profile.pp_profile[pp_profile.euphotic_depth_index] * (euphotic_depth[t] - (pp_profile.euphotic_depth_index as f64 - 1.0) * DEPTH_PROFILE_STEP);
+            pp[t] = pp[t] + pp_profile.pp_profile[pp_profile.euph_index] * (euphotic_depth[t] - (pp_profile.euph_index as f64 - 1.0) * DEPTH_PROFILE_STEP);
 
 
         }
