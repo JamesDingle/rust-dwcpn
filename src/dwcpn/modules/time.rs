@@ -10,11 +10,10 @@ pub fn generate_time_array(sunrise: f64) -> ([f64; TIMESTEPS], f64) {
         time_array[i] = sunrise + delta_t * i_f64;
     }
 
-    return (time_array, delta_t)
+    return (time_array, delta_t);
 }
 
 pub fn compute_sunrise(jday: u16, lat: f64) -> (f64, f64, f64) {
-    
     // convert julian day to double for the equation
     let dayfloat = jday as f64;
 
@@ -22,10 +21,11 @@ pub fn compute_sunrise(jday: u16, lat: f64) -> (f64, f64, f64) {
 
     let theta: f64 = tau * dayfloat / 365.0f64;
 
-    let delta: f64 =    0.006918 - 0.399912 * theta.cos() +
-                        0.070257 * theta.sin() -
-                        0.006758 * (2.0 * theta).cos() + 0.000907 * (2.0 * theta).sin() -
-                        0.002697 * (3.0 * theta).cos() + 0.001480 * (3.0 * theta).sin();
+    let delta: f64 = 0.006918 - 0.399912 * theta.cos() + 0.070257 * theta.sin()
+        - 0.006758 * (2.0 * theta).cos()
+        + 0.000907 * (2.0 * theta).sin()
+        - 0.002697 * (3.0 * theta).cos()
+        + 0.001480 * (3.0 * theta).sin();
 
     let phi: f64 = lat * (tau / 360.0);
 
@@ -40,5 +40,5 @@ pub fn compute_sunrise(jday: u16, lat: f64) -> (f64, f64, f64) {
     // return sunrise
     let sunrise: f64 = 12.0 - phidel.acos() * (360.0 / tau) / 15.0;
 
-    return (sunrise, delta, phi)
+    return (sunrise, delta, phi);
 }

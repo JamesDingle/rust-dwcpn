@@ -1,10 +1,14 @@
 use crate::dwcpn::modules::chl_profile::gen_chl_profile;
-use crate::dwcpn::modules::time::{compute_sunrise, generate_time_array};
-use crate::dwcpn::modules::config::{TIMESTEPS, WL_COUNT, WL_ARRAY, DEPTH_PROFILE_COUNT, DEPTH_PROFILE_STEP};
-use crate::dwcpn::modules::zenith::generate_zenith_array;
-use crate::dwcpn::modules::irradiance::{compute_irradiance_components, lookup_thekaekara_correction};
-use std::f64::consts::PI;
+use crate::dwcpn::modules::config::{
+    DEPTH_PROFILE_COUNT, DEPTH_PROFILE_STEP, TIMESTEPS, WL_ARRAY, WL_COUNT,
+};
+use crate::dwcpn::modules::irradiance::{
+    compute_irradiance_components, lookup_thekaekara_correction,
+};
 use crate::dwcpn::modules::pp_profile::compute_pp_depth_profile;
+use crate::dwcpn::modules::time::{compute_sunrise, generate_time_array};
+use crate::dwcpn::modules::zenith::generate_zenith_array;
+use std::f64::consts::PI;
 
 pub struct InputParams {
     pub lat: f64,
@@ -35,9 +39,6 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
     let (time_array, delta_t) = generate_time_array(sunrise);
     let (zenith_array, zenith_d_array) = generate_zenith_array(time_array, delta, phi);
 
-
-
-    // loop over time array (from sunrise to noon)
     let mut start_time_idx: f64 = -1.0;
     let mut day_length: f64 = 0.0;
     let mut iom: f64 = 0.0;
@@ -54,12 +55,11 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
     let mut pp: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
     let mut euphotic_depth: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
 
-
+    // loop over time array (from sunrise to noon)
     for t in 0..TIMESTEPS {
-
         // if the zenith angle is yet to go below 80° then skip to the next time step
         if zenith_d_array[t] > 80. {
-            continue
+            continue;
         }
 
         // update start_time if necessary and assign delta_prestart variable
@@ -78,11 +78,11 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
             day_length = 2.0 * (12.0 - (start_time - delta_t));
             iom = input.par * PI / (2.0 * day_length);
             delta_prestart = start_time - sunrise;
-
         }
 
         // compute direct and diffuse irradiance components at sea level
-        let (mut direct, mut diffuse) = compute_irradiance_components(zenith_array[t], zenith_d_array[t]);
+        let (mut direct, mut diffuse) =
+            compute_irradiance_components(zenith_array[t], zenith_d_array[t]);
 
         let mut direct_integrated: f64 = 0.0;
         let mut diffuse_integrated: f64 = 0.0;
@@ -104,7 +104,8 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
         let albedo = 0.28 / (1.0 + 6.43 * zenith_array[t].cos());
         let cc = input.cloud / 100.0;
         let idir1 = direct_integrated * (1.0 - cc);
-        let flux = ((1.0 - 0.5 * cc) * (0.82 - albedo * (1.0 - cc)) * zenith_array[t].cos()) / ((0.82 - albedo) * zenith_array[t].cos());
+        let flux = ((1.0 - 0.5 * cc) * (0.82 - albedo * (1.0 - cc)) * zenith_array[t].cos())
+            / ((0.82 - albedo) * zenith_array[t].cos());
         let idif1 = surface_irradiance[t] * flux - idir1;
         let dir_div = idir1 / direct_integrated;
         let dif_div = idif1 / diffuse_integrated;
@@ -116,8 +117,11 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
 
         // calculate reflection and convert watts/micron into einsteins/hr/nm
         let zenith_w = (zenith_array[t].sin() / 1.333).asin();
-        let mut reflection = 0.5 * (zenith_array[t] - zenith_w).sin().powi(2) / (zenith_array[t] + zenith_w).sin().powi(2);
-        reflection = reflection + 0.5 * (zenith_array[t] - zenith_w).tan().powi(2) / (zenith_array[t] + zenith_w).tan().powi(2);
+        let mut reflection = 0.5 * (zenith_array[t] - zenith_w).sin().powi(2)
+            / (zenith_array[t] + zenith_w).sin().powi(2);
+        reflection = reflection
+            + 0.5 * (zenith_array[t] - zenith_w).tan().powi(2)
+                / (zenith_array[t] + zenith_w).tan().powi(2);
 
         // recompute surface irradiance across spectrum
         surface_irradiance[t] = 0.0;
@@ -161,7 +165,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
             input.ay,
             input.alpha_b,
             input.pmb,
-            input.yel_sub
+            input.yel_sub,
         );
 
         if pp_profile.success == true {
@@ -173,35 +177,39 @@ pub fn calc_pp(input: InputParams) -> (f64, f64) {
 
             euphotic_depth[t] = pp_profile.euphotic_depth;
 
-            // if pp_profile.euph_index == 0 {
-            //     pp_profile.euph_index == 1;
-            // }
-
-            for z in 0..pp_profile.euph_index {
-                pp[t] = pp[t] + DEPTH_PROFILE_STEP * (pp_profile.pp_profile[z] + pp_profile.pp_profile[z+1]) / 2.0;
+            if pp_profile.euph_index == 0 {
+                pp_profile.euph_index = 1;
             }
 
-            pp[t] = pp[t] + pp_profile.pp_profile[pp_profile.euph_index] * (euphotic_depth[t] - (pp_profile.euph_index as f64 - 1.0) * DEPTH_PROFILE_STEP);
+            for z in 0..pp_profile.euph_index {
+                pp[t] = pp[t]
+                    + DEPTH_PROFILE_STEP
+                        * (pp_profile.pp_profile[z] + pp_profile.pp_profile[z + 1])
+                        / 2.0;
+            }
 
+            pp[t] = pp[t]
+                + pp_profile.pp_profile[pp_profile.euph_index]
+                    * (euphotic_depth[t]
+                        - (pp_profile.euph_index as f64 - 1.0) * DEPTH_PROFILE_STEP);
 
         }
-
-    }
+    } // time loop
 
     let mut pp_day = pp[0] * delta_prestart / 2.0;
     // let mut z_phot_day = euphotic_depth[0] * i_zero[0] * delta_prestart / 2.0;
     // let mut i_zero_day = i_zero[0] * delta_prestart / 2.0;
 
-    let mut max_euphotic_depth = 0.0;
+    let mut max_euphotic_depth: f64 = 0.0;
 
-    for t in 0..TIMESTEPS-1 {
-        pp_day = pp_day + ((pp[t] + pp[t+1]) * delta_t / 2.0);
-        if max_euphotic_depth < euphotic_depth[t] {
-            max_euphotic_depth = euphotic_depth[t];
+    for t in 0..TIMESTEPS - 1 {
+        pp_day = pp_day + ((pp[t] + pp[t + 1]) * delta_t / 2.0);
+        if max_euphotic_depth.abs() < euphotic_depth[t].abs() {
+            max_euphotic_depth = euphotic_depth[t].abs();
         }
     }
 
     // mutliply by two because we have only integrated over half of the day
     pp_day = pp_day * 2.0;
-    return (pp_day, max_euphotic_depth)
+    return (pp_day, max_euphotic_depth);
 }

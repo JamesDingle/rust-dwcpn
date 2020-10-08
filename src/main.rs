@@ -1,28 +1,12 @@
-//use crate::modules::time::gen_time_array;
-
-use crate::dwcpn::dwcpn::{InputParams, calc_pp};
-use crate::dwcpn::modules::pp_profile::{calculate_bw, calculate_bbr, calculate_ay};
+use crate::dwcpn::dwcpn::{calc_pp, InputParams};
+use crate::dwcpn::modules::pp_profile::{calculate_ay, calculate_bbr, calculate_bw};
 
 use netcdf;
 use pbr::ProgressBar;
 
 mod dwcpn;
 
-
-// You can also modify a Variable inside an existing netCDF file
-// open it in read/write mode
-// let mut file = netcdf::append("crabs2.nc")?;
-// // get a mutable binding of the variable "crab_coolness_level"
-// let mut var = file.variable_mut("crab_coolness_level").unwrap();
-//
-// let data : Vec<i32> = vec![100; 10];
-// // write 5 first elements of the vector `data` into `var` starting at index 2;
-// var.put_values(&data[..5], Some(&[2]), Some(&[5]));
-// // Change the first value of `var` into '999'
-// var.put_value(999.0f32, Some(&[0]));
-
-fn main() {
-
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // pre calculate bw/bbr/ay arrays for use in the pp_profile calculation later
     // this only needs to be done once for all pixels so I have it here, before we start
     // looping over pixels
@@ -32,9 +16,12 @@ fn main() {
 
     // let filename = "/home/jad/Downloads/pp_gku_params_2003_07.nc";
     // let filename = "pp_processing_20100501_30.000_50.000_-140.000_-120.000.nc";
-    let filename = "/tmp/ppws/pp_processing_19980101_-50.000_-30.000_160.000_180.000.nc";
+    // let filename = "/home/jad/work/pp/pp_processing_20150501_49.000_76.000_-47.000_4.000.nc";
+    let filename = "/tmp/pp_processing_20100501_-90.000_90.000_-180.000_180.000.nc";
 
-    let ncfile = netcdf::append(&filename).unwrap();
+    println!("Processing file: {}", filename);
+
+    let mut ncfile = netcdf::append(&filename)?;
 
     let lat = &ncfile.variable("lat").unwrap();
     let lon = &ncfile.variable("lon").unwrap();
@@ -47,12 +34,23 @@ fn main() {
     let rho = &ncfile.variable("rho").unwrap();
     let sigma = &ncfile.variable("sigma").unwrap();
 
-    // let mut pp_var: [f64; 241*241] = [0.0; 241 * 241];
+    let lat_data = lat.values::<f64>(None, None)?;
+    let lon_data = lon.values::<f64>(None, None)?;
+    let chl_data = chl.values::<f64>(None, None)?;
+    let par_data = par.values::<f64>(None, None)?;
+    let bathymetry_data = bathymetry.values::<f64>(None, None)?;
+    let pi_alpha_data = pi_alpha.values::<f64>(None, None)?;
+    let pi_pmb_data = pi_pmb.values::<f64>(None, None)?;
+    let zm_data = zm.values::<f64>(None, None)?;
+    let rho_data = rho.values::<f64>(None, None)?;
+    let sigma_data = sigma.values::<f64>(None, None)?;
+
+    let mut pp_data = vec![9969209968386869000000000000000000000.0; lat.len() * lon.len()];
+    let mut euphotic_depth_data =
+        vec![9969209968386869000000000000000000000.0; lat.len() * lon.len()];
 
     println!("{:?}", lat.len());
     println!("{:?}", lon.len());
-    let mut ncfile2 = netcdf::append(&filename).unwrap();
-    let mut pp:netcdf::variable::VariableMut = ncfile2.variable_mut("pp").unwrap();
 
     let count = lat.len() * lon.len();
     let mut pb = ProgressBar::new(count as u64);
@@ -60,62 +58,51 @@ fn main() {
     for y in 0..lat.len() {
         for x in 0..lon.len() {
             pb.inc();
-            let input = InputParams{
-                lat: lat.value(Some(&[y])).unwrap(),
-                lon: lon.value(Some(&[x])).unwrap(),
-                z_bottom: bathymetry.value(Some(&[y,x])).unwrap(),
-                iday: 100,
-                alpha_b: pi_alpha.value(Some(&[y,x])).unwrap(),
-                pmb: pi_pmb.value(Some(&[y,x])).unwrap(),
-                z_m: zm.value(Some(&[y,x])).unwrap(),
-                chl: chl.value(Some(&[y,x])).unwrap(),
-                rho: rho.value(Some(&[y,x])).unwrap(),
-                sigma: sigma.value(Some(&[y,x])).unwrap(),
+
+            if (chl_data[[y, x]] == 9969209968386869000000000000000000000.0)
+                || (par_data[[y, x]] == 9969209968386869000000000000000000000.0)
+                || (bathymetry_data[[y, x]] == 9969209968386869000000000000000000000.0)
+                || (pi_alpha_data[[y, x]] == 9969209968386869000000000000000000000.0)
+                || (pi_pmb_data[[y, x]] == 9969209968386869000000000000000000000.0)
+                || (zm_data[[y, x]] == 9969209968386869000000000000000000000.0)
+                || (rho_data[[y, x]] == 9969209968386869000000000000000000000.0)
+                || (sigma_data[[y, x]] == 9969209968386869000000000000000000000.0)
+            {
+                continue;
+            }
+
+            let input = InputParams {
+                lat: lat_data[y],
+                lon: lon_data[x],
+                z_bottom: bathymetry_data[[y, x]],
+                iday: 135,
+                alpha_b: pi_alpha_data[[y, x]],
+                pmb: pi_pmb_data[[y, x]],
+                z_m: zm_data[[y, x]],
+                chl: chl_data[[y, x]],
+                rho: rho_data[[y, x]],
+                sigma: sigma_data[[y, x]],
                 cloud: 0.0,
                 yel_sub: 0.3,
-                par: par.value(Some(&[y,x])).unwrap(),
+                par: par_data[[y, x]],
                 bw,
                 bbr,
-                ay
+                ay,
             };
 
-            if (input.chl == 9969209968386869000000000000000000000.0) ||
-                (input.par == 9969209968386869000000000000000000000.0) ||
-                (input.z_bottom == 9969209968386869000000000000000000000.0) ||
-                (input.alpha_b == 9969209968386869000000000000000000000.0) ||
-                (input.pmb == 9969209968386869000000000000000000000.0) ||
-                (input.z_m == 9969209968386869000000000000000000000.0) ||
-                (input.rho == 9969209968386869000000000000000000000.0) ||
-                (input.sigma == 9969209968386869000000000000000000000.0) {
-
-                pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
-                continue
-            }
-
             let result = calc_pp(input);
-
-            if result.0 < 4000.0 {
-                // println!("pp = {:?}", result);
-                // pp_var[x * y + y] = result.0;
-                // pp.put_value(result.0, Some(&[y,x])).unwrap();
-                pp.put_value(result.0, Some(&[y,x])).unwrap();
-
-            } else {
-                pp.put_value(9969209968386869000000000000000000000.0, Some(&[y,x])).unwrap();
-                // println!("test");
+            if result.0 < 10000.0 {
+                pp_data[y * lon.len() + x] = result.0;
+                euphotic_depth_data[y * lon.len() + x] = result.1;
             }
-
         } // x loop
-
     } // y loop
 
-    // pb.finish_print("done");
+    // let mut ncfile2 = netcdf::append(&filename)?;
+    let mut pp_var = ncfile.variable_mut("pp").unwrap();
+    &pp_var.put_values(&pp_data, None, None);
 
-    // let mut ncfile = ncfile.borrow_mut();
-
-    // let mut pp_var = ncfile.variable_mut("pp").unwrap();
-
-
-
+    let mut euph_var = ncfile.variable_mut("euphotic_depth").unwrap();
+    &euph_var.put_values(&euphotic_depth_data, None, None);
+    Ok(())
 }
-
