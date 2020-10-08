@@ -9,3 +9,8 @@ edition = "2018"
 [dependencies]
 netcdf = "0.4.1"
 pbr = "1.0.2"
+ndarray = "0.13.1"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1

@@ -114,6 +114,7 @@ dependencies = [
 name = "rust-dwcpn"
 version = "0.1.0"
 dependencies = [
+ "ndarray 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "netcdf 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pbr 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
