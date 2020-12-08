@@ -162,7 +162,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
             direct[l] = direct[l] * adjustment[t];
             diffuse[l] = diffuse[l] * adjustment[t];
 
-            i_z[0] = i_z[0] + (direct[l] + diffuse[l]) * 5.0;
+            i_z[0] = i_z[0] + (direct[l] + diffuse[l]) * DELTA_LAMBDA;
         }
 
         let mut pp_profile = compute_pp_depth_profile(
