@@ -14,11 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bbr = calculate_bbr();
     let ay = calculate_ay();
 
-    // let filename = "/home/jad/Downloads/pp_gku_params_2003_07.nc";
-    // let filename = "pp_processing_20100501_30.000_50.000_-140.000_-120.000.nc";
     let filename = "/home/jad/work/pp/istar_testing/atlantic/pp_processing_20150501_49.000_76.000_-47.000_4.000_rust.nc";
-    // let filename = "/home/jad/work/pp/czcs_global/pp_processing_19980101_-90.000_90.000_-180.000_180.000.nc";
-    // let filename = "/home/jad/work/pp/istar_testing/pp_processing_20100525_-10.000_10.000_120.000_140.000_rust.nc";
     // let filename = "/home/jad/work/pp/new_zenith/global/pp_processing_20100501_-90.000_90.000_-180.000_180.000.nc";
 
     println!("Processing file: {}", filename);
