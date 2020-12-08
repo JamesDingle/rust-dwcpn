@@ -1,12 +1,17 @@
 import xarray as xr
 import numpy
-filename="pp_processing_20100501_30.000_50.000_-140.000_-120.000.nc"
+
+import sys
+
+
+filename=sys.argv[1]
+var = sys.argv[2]
 
 ds = xr.open_dataset(filename)
 
-pp = ds['pp']
+var_data = ds[var]
 
-pp_masked = numpy.ma.masked_where(numpy.isnan(pp), pp)
+pp_masked = numpy.ma.masked_where(numpy.isnan(var_data), var_data)
 
 pp_no_masked_vals = numpy.asarray(pp_masked[~pp_masked.mask])
 
