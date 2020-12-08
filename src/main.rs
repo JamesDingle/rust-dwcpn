@@ -16,8 +16,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // let filename = "/home/jad/Downloads/pp_gku_params_2003_07.nc";
     // let filename = "pp_processing_20100501_30.000_50.000_-140.000_-120.000.nc";
-    // let filename = "/home/jad/work/pp/pp_processing_20150501_49.000_76.000_-47.000_4.000.nc";
-    let filename = "/tmp/pp_processing_20100501_-90.000_90.000_-180.000_180.000.nc";
+    let filename = "/home/jad/work/pp/istar_testing/atlantic/pp_processing_20150501_49.000_76.000_-47.000_4.000_rust.nc";
+    // let filename = "/home/jad/work/pp/czcs_global/pp_processing_19980101_-90.000_90.000_-180.000_180.000.nc";
+    // let filename = "/home/jad/work/pp/istar_testing/pp_processing_20100525_-10.000_10.000_120.000_140.000_rust.nc";
+    // let filename = "/home/jad/work/pp/new_zenith/global/pp_processing_20100501_-90.000_90.000_-180.000_180.000.nc";
 
     println!("Processing file: {}", filename);
 
@@ -46,6 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sigma_data = sigma.values::<f64>(None, None)?;
 
     let mut pp_data = vec![9969209968386869000000000000000000000.0; lat.len() * lon.len()];
+    let mut spectral_i_star_mean_data = vec![9969209968386869000000000000000000000.0; lat.len() * lon.len()];
     let mut euphotic_depth_data =
         vec![9969209968386869000000000000000000000.0; lat.len() * lon.len()];
 
@@ -62,11 +65,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if (chl_data[[y, x]] == 9969209968386869000000000000000000000.0)
                 || (par_data[[y, x]] == 9969209968386869000000000000000000000.0)
                 || (bathymetry_data[[y, x]] == 9969209968386869000000000000000000000.0)
-                || (pi_alpha_data[[y, x]] == 9969209968386869000000000000000000000.0)
-                || (pi_pmb_data[[y, x]] == 9969209968386869000000000000000000000.0)
-                || (zm_data[[y, x]] == 9969209968386869000000000000000000000.0)
-                || (rho_data[[y, x]] == 9969209968386869000000000000000000000.0)
-                || (sigma_data[[y, x]] == 9969209968386869000000000000000000000.0)
+                || (pi_alpha_data[[y, x]] == -999.0)
+                || (pi_pmb_data[[y, x]] == -999.0)
+                || (zm_data[[y, x]] == -999.0)
+                || (rho_data[[y, x]] == -999.0)
+                || (sigma_data[[y, x]] == -999.0)
             {
                 continue;
             }
@@ -76,6 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 lon: lon_data[x],
                 z_bottom: bathymetry_data[[y, x]],
                 iday: 135,
+                // iday: 165,
                 alpha_b: pi_alpha_data[[y, x]],
                 pmb: pi_pmb_data[[y, x]],
                 z_m: zm_data[[y, x]],
@@ -94,6 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if result.0 < 10000.0 {
                 pp_data[y * lon.len() + x] = result.0;
                 euphotic_depth_data[y * lon.len() + x] = result.1;
+                spectral_i_star_mean_data[y * lon.len() + x] = result.2;
             }
         } // x loop
     } // y loop
@@ -104,5 +109,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut euph_var = ncfile.variable_mut("euphotic_depth").unwrap();
     &euph_var.put_values(&euphotic_depth_data, None, None);
+
+    let mut spectral_i_star_var = ncfile.variable_mut("spectral_i_star_mean").unwrap();
+    &spectral_i_star_var.put_values(&spectral_i_star_mean_data, None, None);
     Ok(())
 }
