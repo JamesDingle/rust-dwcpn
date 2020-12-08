@@ -55,11 +55,13 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
     // arrays to store results
     let mut pp: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
     let mut euphotic_depth: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
-    let mut spectral_i_star: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
+    // let mut spectral_i_star: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
 
     // spectral i star is calculated as a running mean
     let mut spectral_i_star_sum: f64 = 0.0;
     let mut spectral_i_star_count: f64 = 0.0;
+
+    let mut start_time: f64;
 
     // loop over time array (from sunrise to noon)
     for t in 0..TIMESTEPS {
@@ -73,7 +75,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
         // t_start is t_idx value when Zenith angle becomes >80 degrees
         // start_time is calculation start time, start_time_index is the index
         // delta_prestart is time elapsed between dawn and start_time
-        let mut start_time: f64 = 0.0;
+
         if start_time_idx < 0.0 {
             start_time_idx = t as f64;
 
@@ -86,7 +88,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
 
             // iom = noon time maximum
             iom = input.par.clone() * PI / (2.0 * day_length);
-            delta_prestart = start_time.clone() - sunrise.clone();
+            delta_prestart = start_time - sunrise;
         }
 
         // compute direct and diffuse irradiance components at sea level
@@ -206,8 +208,8 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
         }
     } // time loop
 
-    let mut pp_day = pp[0] * (zenith_80_time - sunrise) / 2.0;
-    let mut spectral_i_star_day = spectral_i_star[0] * (zenith_80_time - sunrise) / 2.0;
+    let mut pp_day = pp[0] * delta_prestart / 2.0;
+    // let mut spectral_i_star_day = spectral_i_star[0] * (zenith_80_time - sunrise) / 2.0;
 
     // let mut z_phot_day = euphotic_depth[0] * i_zero[0] * delta_prestart / 2.0;
     // let mut i_zero_day = i_zero[0] * delta_prestart / 2.0;
