@@ -158,7 +158,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
 
         //compute the adjusted irradiance surface value
         i_z[0] = 0.0;
-        for l in 0..NUM_WAVELENGTHS {
+        for l in 0..WL_COUNT {
             direct[l] = direct[l] * adjustment[t];
             diffuse[l] = diffuse[l] * adjustment[t];
 
