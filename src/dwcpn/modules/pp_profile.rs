@@ -1,7 +1,5 @@
 use crate::dwcpn::modules::absorption::calc_ac;
-use crate::dwcpn::modules::config::{
-    AW, DEPTH_PROFILE_COUNT, DEPTH_PROFILE_STEP, WL_ARRAY, WL_COUNT,
-};
+use crate::dwcpn::modules::config::{AW, DEPTH_PROFILE_COUNT, DEPTH_PROFILE_STEP, WL_ARRAY, WL_COUNT, DELTA_LAMBDA};
 use crate::dwcpn::modules::linear_interp::linear_interp;
 
 pub struct PpProfile {
@@ -9,6 +7,7 @@ pub struct PpProfile {
     pub par_profile: [f64; DEPTH_PROFILE_COUNT],
     pub euphotic_depth: f64,
     pub euph_index: usize,
+    pub spectral_i_star: f64,
     pub success: bool,
 }
 
@@ -61,9 +60,9 @@ pub fn compute_pp_depth_profile(
     yellow_substance: f64,
 ) -> PpProfile {
     let mut pp_profile: [f64; DEPTH_PROFILE_COUNT] = [0.0; DEPTH_PROFILE_COUNT];
+    let mut spectral_i_star_profile: [f64; DEPTH_PROFILE_COUNT] = [0.0; DEPTH_PROFILE_COUNT];
     let mut par_profile: [f64; DEPTH_PROFILE_COUNT] = [0.0; DEPTH_PROFILE_COUNT];
     let mut euphotic_depth: f64 = 0.0;
-    let mut euph_index: usize = 0;
     let mut success = false;
 
     let mut i_zero: [f64; WL_COUNT] = [0.0; WL_COUNT];
@@ -80,22 +79,27 @@ pub fn compute_pp_depth_profile(
         i_z[l] = i_zero[l];
     }
 
+    let mut i_alpha_sum: f64 = 0.0;
+    let mut spectral_i_star: f64 = 0.0;
+
     for z in 0..DEPTH_PROFILE_COUNT {
         let chl = chl_profile[z];
         let (ac, ac_mean) = calc_ac(chl);
 
         if ac_mean == 0.0 {
             if z > 1 {
-                euph_index = z - 1;
+                let euph_index = z - 1;
                 euphotic_depth = depth_profile[euph_index]
                     + DEPTH_PROFILE_STEP * (100.0 * par_profile[euph_index] / par_profile[0]).ln()
                         / (par_profile[euph_index] / par_profile[z]).ln();
                 success = true;
+                spectral_i_star = i_alpha_sum / province_pmb.clone();
                 return PpProfile {
                     pp_profile,
                     par_profile,
                     euphotic_depth,
                     euph_index,
+                    spectral_i_star,
                     success,
                 };
             }
@@ -129,7 +133,7 @@ pub fn compute_pp_depth_profile(
 
             k[l] = (a + bb) / mu_d[l];
 
-            par_profile[z] = par_profile[z] + i_z[l] * 5.0;
+            par_profile[z] = par_profile[z] + i_z[l] * DELTA_LAMBDA;
         }
 
         let mut i_alpha = 0.0;
@@ -139,40 +143,46 @@ pub fn compute_pp_depth_profile(
             // a.ka. (mgC per mgChl per Hour) / (Watts per m^2)
             // the line below converts irradiance (light units) to einsteins per m^2 per hour
             // this makes it compatible with the par units
-            let x = province_alpha * ac[l] * 6022.0 / (2.77 * 36.0 * ac_mean);
+            let x = province_alpha.clone() * ac[l] * 6022.0 / (2.77 * 36.0 * ac_mean.clone());
 
-            i_alpha = i_alpha + x * 5.0 * i_z[l] / mu_d[l];
+            i_alpha = i_alpha + x * DELTA_LAMBDA * i_z[l] / mu_d[l];
             i_z[l] = i_z[l] * (-k[l] * DEPTH_PROFILE_STEP).exp();
         }
 
         // pp equation has been updated after discussion with Shubha 2018/08/16
         // pp_profile[z] = (i_alpha / (1.0 + (i_alpha / province_pmb).powf(2.0)).sqrt()) * chl; // this is the old primary production equation.
 
-        pp_profile[z] = chl * province_pmb * (1.0 - ((-i_alpha) / province_pmb).exp());
+        pp_profile[z] = chl * province_pmb.clone() * (1.0 - (-i_alpha / province_pmb.clone()).exp());
+        // spectral_i_star_profile[z] = i_alpha / province_pmb.clone();
+        i_alpha_sum = i_alpha_sum + i_alpha.clone();
 
         if z > 0 {
             if par_profile[z] < (0.01 * par_profile[0]) {
-                euph_index = z - 1;
+                let euph_index = z - 1;
                 euphotic_depth = depth_profile[euph_index]
                     + DEPTH_PROFILE_STEP * (100.0 * par_profile[euph_index] / par_profile[0]).ln()
                         / (par_profile[euph_index] / par_profile[z]).ln();
                 success = true;
+                spectral_i_star = i_alpha_sum / province_pmb.clone();
                 return PpProfile {
                     pp_profile,
                     par_profile,
                     euphotic_depth,
                     euph_index,
+                    spectral_i_star,
                     success,
                 };
             }
         }
     } // depth loop
 
+    let euph_index = 0;
     return PpProfile {
         pp_profile,
         par_profile,
         euphotic_depth,
         euph_index,
+        spectral_i_star,
         success,
     };
 }
