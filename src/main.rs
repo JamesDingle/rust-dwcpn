@@ -106,6 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut euph_var = ncfile.variable_mut("euphotic_depth").unwrap();
     &euph_var.put_values(&euphotic_depth_data, None, None);
 
+
     let mut spectral_i_star_var = ncfile.variable_mut("spectral_i_star_mean").unwrap();
     &spectral_i_star_var.put_values(&spectral_i_star_mean_data, None, None);
     Ok(())

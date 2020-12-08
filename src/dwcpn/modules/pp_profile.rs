@@ -2,6 +2,7 @@ use crate::dwcpn::modules::absorption::calc_ac;
 use crate::dwcpn::modules::config::{AW, DEPTH_PROFILE_COUNT, DEPTH_PROFILE_STEP, WL_ARRAY, WL_COUNT, DELTA_LAMBDA};
 use crate::dwcpn::modules::linear_interp::linear_interp;
 
+
 pub struct PpProfile {
     pub pp_profile: [f64; DEPTH_PROFILE_COUNT],
     pub par_profile: [f64; DEPTH_PROFILE_COUNT],
@@ -137,6 +138,7 @@ pub fn compute_pp_depth_profile(
 
         let mut i_alpha = 0.0;
         for l in 0..WL_COUNT {
+
             // this conversion expects pi_alpha to be in units of
             // mgC mgChl^-1 h^-1 (W m^-2)^-1
             // a.ka. (mgC per mgChl per Hour) / (Watts per m^2)
@@ -144,9 +146,11 @@ pub fn compute_pp_depth_profile(
             // this makes it compatible with the par units
             let x = province_alpha.clone() * ac[l] * 6022.0 / (2.77 * 36.0 * ac_mean.clone());
 
+
             i_alpha = i_alpha + x * DELTA_LAMBDA * i_z[l] / mu_d[l];
             i_z[l] = i_z[l] * (-k[l] * DEPTH_PROFILE_STEP).exp();
         }
+
 
         // pp equation has been updated after discussion with Shubha 2018/08/16
         // pp_profile[z] = (i_alpha / (1.0 + (i_alpha / province_pmb).powf(2.0)).sqrt()) * chl; // this is the old primary production equation.
@@ -154,6 +158,7 @@ pub fn compute_pp_depth_profile(
         pp_profile[z] = chl * province_pmb.clone() * (1.0 - (-i_alpha / province_pmb.clone()).exp());
         // spectral_i_star_profile[z] = i_alpha / province_pmb.clone();
         i_alpha_sum = i_alpha_sum + i_alpha.clone();
+
 
         if z > 0 {
             if par_profile[z] < (0.01 * par_profile[0]) {
