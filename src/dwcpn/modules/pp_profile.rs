@@ -60,7 +60,6 @@ pub fn compute_pp_depth_profile(
     yellow_substance: f64,
 ) -> PpProfile {
     let mut pp_profile: [f64; DEPTH_PROFILE_COUNT] = [0.0; DEPTH_PROFILE_COUNT];
-    let mut spectral_i_star_profile: [f64; DEPTH_PROFILE_COUNT] = [0.0; DEPTH_PROFILE_COUNT];
     let mut par_profile: [f64; DEPTH_PROFILE_COUNT] = [0.0; DEPTH_PROFILE_COUNT];
     let mut euphotic_depth: f64 = 0.0;
     let mut success = false;
