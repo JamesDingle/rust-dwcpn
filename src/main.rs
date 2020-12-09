@@ -2,7 +2,8 @@ use crate::dwcpn::dwcpn::{calc_pp, InputParams};
 use crate::dwcpn::modules::pp_profile::{calculate_ay, calculate_bbr, calculate_bw};
 
 use netcdf;
-use pbr::ProgressBar;
+//use pbr::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
 
 mod dwcpn;
 
@@ -52,11 +53,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:?}", lon.len());
 
     let count = lat.len() * lon.len();
-    let mut pb = ProgressBar::new(count as u64);
+    // let mut pb = ProgressBar::new(count as u64);
+    let pb = ProgressBar::new(count as u64);
+    pb.set_draw_delta(100);
+    pb.set_style(ProgressStyle::default_bar()
+        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {percent} [{pos:>7}/{len:7} @ {per_sec}] (ETA: {eta})")
+        .progress_chars("#>-"));
 
     for y in 0..lat.len() {
         for x in 0..lon.len() {
-            pb.inc();
+            pb.inc(1);
 
             if (chl_data[[y, x]] == 9969209968386869000000000000000000000.0)
                 || (par_data[[y, x]] == 9969209968386869000000000000000000000.0)
