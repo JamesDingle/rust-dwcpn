@@ -15,8 +15,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bbr = calculate_bbr();
     let ay = calculate_ay();
 
-    let filename = "/home/jad/work/pp/istar_testing/atlantic/pp_processing_20150501_49.000_76.000_-47.000_4.000_rust.nc";
-    // let filename = "/home/jad/work/pp/new_zenith/global/pp_processing_20100501_-90.000_90.000_-180.000_180.000.nc";
+    // let filename = "/Users/jad/work/pml/workspaces/pp/pp_processing_20100101_global.nc";
+    let filename = "/Users/jad/work/pml/workspaces/pp/pp_processing_20150501_49.000_76.000_-47.000_4.000_rust.nc";
 
     println!("Processing file: {}", filename);
 
@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pb = ProgressBar::new(count as u64);
     pb.set_draw_delta(100);
     pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {percent} [{pos:>7}/{len:7} @ {per_sec}] (ETA: {eta})")
+        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {percent}% [{pos:>7}/{len:7} @ {per_sec}] (ETA: {eta})")
         .progress_chars("#>-"));
 
     for y in 0..lat.len() {
