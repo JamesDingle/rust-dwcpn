@@ -1,10 +1,10 @@
 pub const TIMESTEPS: usize =  12;
 
-// pub const DEPTH_PROFILE_COUNT: usize = 500;
-// pub const DEPTH_PROFILE_STEP: f64 = 0.5;
+pub const DEPTH_PROFILE_COUNT: usize = 500;
+pub const DEPTH_PROFILE_STEP: f64 = 0.5;
 
-pub const DEPTH_PROFILE_COUNT: usize = 250;
-pub const DEPTH_PROFILE_STEP: f64 = 1.0;
+// pub const DEPTH_PROFILE_COUNT: usize = 250;
+// pub const DEPTH_PROFILE_STEP: f64 = 1.0;
 
 // pub const DEPTH_PROFILE_COUNT: usize = 100;
 // pub const DEPTH_PROFILE_STEP: f64 = 2.5;
