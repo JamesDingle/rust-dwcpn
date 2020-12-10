@@ -1,13 +1,36 @@
 use crate::dwcpn::dwcpn::{calc_pp, InputParams};
 use crate::dwcpn::modules::pp_profile::{calculate_ay, calculate_bbr, calculate_bw};
 
+use clap::{Arg, App, value_t};
 use netcdf;
-//use pbr::ProgressBar;
 use indicatif::{ProgressBar, ProgressStyle};
 
 mod dwcpn;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+    // Argument parsing
+    let args = App::new("DWCPN Primary Production Model")
+        .version("0.1.0")
+        .arg(Arg::with_name("filename")
+            .short("f")
+            .long("filename")
+            .help("location of netcdf file to run the model on")
+            .required(true)
+            .takes_value(true)
+        )
+        .arg(Arg::with_name("jday")
+            .short("j")
+            .long("jday")
+            .help("Julian day of year (a.k.a. Ordinal)")
+            .required(true)
+            .takes_value(true)
+        )
+        .get_matches();
+
+    let filename = args.value_of("filename").unwrap();
+    let jday = value_t!(args.value_of("jday"), u16).unwrap();
+
     // pre calculate bw/bbr/ay arrays for use in the pp_profile calculation later
     // this only needs to be done once for all pixels so I have it here, before we start
     // looping over pixels
@@ -16,7 +39,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ay = calculate_ay();
 
     // let filename = "/Users/jad/work/pml/workspaces/pp/pp_processing_20100101_global.nc";
-    let filename = "/Users/jad/work/pml/workspaces/pp/pp_processing_20150501_49.000_76.000_-47.000_4.000_rust.nc";
+    // let filename = "/Users/jad/work/pml/workspaces/pp/pp_processing_20150501_49.000_76.000_-47.000_4.000_rust.nc";
+
 
     println!("Processing file: {}", filename);
 
@@ -80,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 lat: lat_data[y],
                 lon: lon_data[x],
                 z_bottom: bathymetry_data[[y, x]],
-                iday: 135,
+                iday: jday,
                 // iday: 165,
                 alpha_b: pi_alpha_data[[y, x]],
                 pmb: pi_pmb_data[[y, x]],
@@ -104,6 +128,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         } // x loop
     } // y loop
+
+    pb.finish_with_message("Complete!");
 
     // let mut ncfile2 = netcdf::append(&filename)?;
     let mut pp_var = ncfile.variable_mut("pp").unwrap();
