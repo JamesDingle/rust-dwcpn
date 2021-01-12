@@ -77,13 +77,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:?}", lon.len());
 
     let count = lat.len() * lon.len();
-    // let mut pb = ProgressBar::new(count as u64);
     let pb = ProgressBar::new(count as u64);
     pb.set_draw_delta(100);
     pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {percent}% [{pos:>7}/{len:7} @ {per_sec}] (ETA: {eta})")
+        .template("{msg} {spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {percent}% [{pos:>7}/{len:7} @ {per_sec}] (ETA: {eta})")
         .progress_chars("#>-"));
 
+    // for y in 0..lat.len() {
+    //     for x in 0..lon.len() {
     for y in 0..lat.len() {
         for x in 0..lon.len() {
             pb.inc(1);
