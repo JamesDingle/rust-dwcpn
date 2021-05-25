@@ -12,6 +12,8 @@ netcdf = "0.5.2"
 ndarray = "0.14.0"
 indicatif = "0.15.0"
 
+
+
 [profile.release]
 lto = "fat"
 codegen-units = 1
