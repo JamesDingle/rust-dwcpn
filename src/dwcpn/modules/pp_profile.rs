@@ -93,7 +93,7 @@ pub fn compute_pp_depth_profile(
                     + DEPTH_PROFILE_STEP * (100.0 * par_profile[euph_index] / par_profile[0]).ln()
                         / (par_profile[euph_index] / par_profile[z]).ln();
                 success = true;
-                spectral_i_star = i_alpha_sum / province_pmb.clone();
+                spectral_i_star = i_alpha_sum / province_pmb;
                 return PpProfile {
                     pp_profile,
                     par_profile,
@@ -144,7 +144,7 @@ pub fn compute_pp_depth_profile(
             // a.ka. (mgC per mgChl per Hour) / (Watts per m^2)
             // the line below converts irradiance (light units) to einsteins per m^2 per hour
             // this makes it compatible with the par units
-            let x = province_alpha.clone() * ac[l] * 6022.0 / (2.77 * 36.0 * ac_mean.clone());
+            let x = province_alpha * ac[l] * 6022.0 / (2.77 * 36.0 * ac_mean);
 
 
             i_alpha = i_alpha + x * DELTA_LAMBDA * i_z[l] / mu_d[l];
@@ -155,9 +155,9 @@ pub fn compute_pp_depth_profile(
         // pp equation has been updated after discussion with Shubha 2018/08/16
         // pp_profile[z] = (i_alpha / (1.0 + (i_alpha / province_pmb).powf(2.0)).sqrt()) * chl; // this is the old primary production equation.
 
-        pp_profile[z] = chl * province_pmb.clone() * (1.0 - (-i_alpha / province_pmb.clone()).exp());
+        pp_profile[z] = chl * province_pmb * (1.0 - (-i_alpha / province_pmb).exp());
         // spectral_i_star_profile[z] = i_alpha / province_pmb.clone();
-        i_alpha_sum = i_alpha_sum + i_alpha.clone();
+        i_alpha_sum = i_alpha_sum + i_alpha;
 
 
         if z > 0 {
@@ -167,7 +167,7 @@ pub fn compute_pp_depth_profile(
                     + DEPTH_PROFILE_STEP * (100.0 * par_profile[euph_index] / par_profile[0]).ln()
                         / (par_profile[euph_index] / par_profile[z]).ln();
                 success = true;
-                spectral_i_star = i_alpha_sum / province_pmb.clone();
+                spectral_i_star = i_alpha_sum / province_pmb;
                 return PpProfile {
                     pp_profile,
                     par_profile,

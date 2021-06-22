@@ -1,4 +1,4 @@
-use crate::dwcpn::dwcpn::{calc_pp, InputParams};
+use crate::dwcpn::dwcpn::{calc_pp, ModelInputs, ModelSettings};
 use crate::dwcpn::modules::pp_profile::{calculate_ay, calculate_bbr, calculate_bw};
 
 use clap::{Arg, App, value_t};
@@ -26,10 +26,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .required(true)
             .takes_value(true)
         )
+        .arg(Arg::with_name("mld")
+            .short("m")
+            .long("mixed-layer-depth")
+            .help("If enabled, limits depth profile to mixed layer depth with surface chlor_a concentration propagated throughout")
+            .required(false)
+            .takes_value(false)
+        )
         .get_matches();
 
     let filename = args.value_of("filename").unwrap();
     let jday = value_t!(args.value_of("jday"), u16).unwrap();
+
+    let settings = ModelSettings {
+        mld_only: args.is_present("mld")
+    };
 
     // pre calculate bw/bbr/ay arrays for use in the pp_profile calculation later
     // this only needs to be done once for all pixels so I have it here, before we start
@@ -37,10 +48,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bw = calculate_bw();
     let bbr = calculate_bbr();
     let ay = calculate_ay();
-
-    // let filename = "/Users/jad/work/pml/workspaces/pp/pp_processing_20100101_global.nc";
-    // let filename = "/Users/jad/work/pml/workspaces/pp/pp_processing_20150501_49.000_76.000_-47.000_4.000_rust.nc";
-
 
     println!("Processing file: {}", filename);
 
@@ -54,6 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pi_alpha = &ncfile.variable("PI_alpha").unwrap();
     let pi_pmb = &ncfile.variable("PI_pmb").unwrap();
     let zm = &ncfile.variable("zm").unwrap();
+    let mld = &ncfile.variable("mld").unwrap();
     let rho = &ncfile.variable("rho").unwrap();
     let sigma = &ncfile.variable("sigma").unwrap();
 
@@ -65,6 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pi_alpha_data = pi_alpha.values::<f64>(None, None)?;
     let pi_pmb_data = pi_pmb.values::<f64>(None, None)?;
     let zm_data = zm.values::<f64>(None, None)?;
+    let mld_data = mld.values::<f64>(None, None)?;
     let rho_data = rho.values::<f64>(None, None)?;
     let sigma_data = sigma.values::<f64>(None, None)?;
 
@@ -92,6 +101,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if (chl_data[[y, x]] == 9969209968386869000000000000000000000.0)
                 || (par_data[[y, x]] == 9969209968386869000000000000000000000.0)
                 || (bathymetry_data[[y, x]] == 9969209968386869000000000000000000000.0)
+                || (mld_data[[y, x]] == 9969209968386869000000000000000000000.0)
                 || (pi_alpha_data[[y, x]] == -999.0)
                 || (pi_pmb_data[[y, x]] == -999.0)
                 || (zm_data[[y, x]] == -999.0)
@@ -101,7 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
 
-            let input = InputParams {
+            let input = ModelInputs {
                 lat: lat_data[y],
                 lon: lon_data[x],
                 z_bottom: bathymetry_data[[y, x]],
@@ -110,6 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 alpha_b: pi_alpha_data[[y, x]],
                 pmb: pi_pmb_data[[y, x]],
                 z_m: zm_data[[y, x]],
+                mld: mld_data[[y, x]],
                 chl: chl_data[[y, x]],
                 rho: rho_data[[y, x]],
                 sigma: sigma_data[[y, x]],
@@ -121,8 +132,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ay,
             };
 
-            let result = calc_pp(input);
-            if result.0 < 10000.0 {
+            let result = calc_pp(&input, &settings);
+            if result.0 < 10000.0 && result.0 > 0.0 {
                 pp_data[y * lon.len() + x] = result.0;
                 euphotic_depth_data[y * lon.len() + x] = result.1;
                 spectral_i_star_mean_data[y * lon.len() + x] = result.2;

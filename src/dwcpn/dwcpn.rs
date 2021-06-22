@@ -1,4 +1,4 @@
-use crate::dwcpn::modules::chl_profile::gen_chl_profile;
+use crate::dwcpn::modules::chl_profile::{gen_chl_profile};
 use crate::dwcpn::modules::config::{DEPTH_PROFILE_COUNT, DEPTH_PROFILE_STEP, TIMESTEPS, WL_ARRAY, WL_COUNT, DELTA_LAMBDA};
 use crate::dwcpn::modules::irradiance::{
     compute_irradiance_components, lookup_thekaekara_correction,
@@ -8,7 +8,7 @@ use crate::dwcpn::modules::time::{compute_sunrise, generate_time_array};
 use crate::dwcpn::modules::zenith::{generate_zenith_array, compute_zenith_time};
 use std::f64::consts::PI;
 
-pub struct InputParams {
+pub struct ModelInputs {
     pub lat: f64,
     pub lon: f64,
     pub z_bottom: f64,
@@ -16,6 +16,7 @@ pub struct InputParams {
     pub alpha_b: f64,
     pub pmb: f64,
     pub z_m: f64,
+    pub mld: f64,
     pub chl: f64,
     pub rho: f64,
     pub sigma: f64,
@@ -27,10 +28,14 @@ pub struct InputParams {
     pub ay: [f64; WL_COUNT],
 }
 
-pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
+pub struct ModelSettings {
+    pub mld_only: bool
+}
+
+pub fn calc_pp(input: &ModelInputs, settings: &ModelSettings) -> (f64, f64, f64) {
 
     // generate chl depth profile
-    let (depth_array, chl_profile) = gen_chl_profile(input.chl, input.sigma, input.rho, input.z_m);
+    let (depth_array, chl_profile) = gen_chl_profile(input, settings);
 
     // compute sunrise and generate time array
     let (sunrise, delta, phi) = compute_sunrise(input.iday, input.lat);
@@ -45,7 +50,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
     let mut iom: f64 = 0.0;
     let mut delta_prestart: f64 = 0.0;
 
-    let solar_correction = lookup_thekaekara_correction(input.iday.clone());
+    let solar_correction = lookup_thekaekara_correction(input.iday);
 
     let mut surface_irradiance: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
     let mut par_surface_irradiance: [f64; TIMESTEPS] = [0.0; TIMESTEPS];
@@ -86,7 +91,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
             day_length = 2.0 * (12.0 - sunrise);
 
             // iom = noon time maximum
-            iom = input.par.clone() * PI / (2.0 * day_length);
+            iom = input.par * PI / (2.0 * day_length);
             delta_prestart = start_time - sunrise;
         }
 
@@ -100,8 +105,8 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
         for l in 0..WL_COUNT {
             // apply fractional correction to diffuse and direct components of irradiance
             // the max correction value is 1353.0, so this converts it to as though we were applying a percentage correction
-            direct[l] = direct[l] * solar_correction.clone() / 1353.0;
-            diffuse[l] = diffuse[l] * solar_correction.clone() / 1353.0;
+            direct[l] = direct[l] * &solar_correction / 1353.0;
+            diffuse[l] = diffuse[l] * &solar_correction / 1353.0;
 
             // add this value to the integrated direct/diffuse components
             direct_integrated = direct_integrated + (direct[l] * zenith_array[t].cos());
@@ -112,13 +117,13 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
 
         // cloud effect calculations
         let albedo = 0.28 / (1.0 + 6.43 * zenith_array[t].cos());
-        let cc = input.cloud.clone() / 100.0;
-        let idir1 = direct_integrated.clone() * (1.0 - cc);
+        let cc = input.cloud / 100.0;
+        let idir1 = &direct_integrated * (1.0 - cc);
         let flux = ((1.0 - 0.5 * cc) * (0.82 - albedo * (1.0 - cc)) * zenith_array[t].cos())
             / ((0.82 - albedo) * zenith_array[t].cos());
         let idif1 = surface_irradiance[t] * flux - idir1;
-        let dir_div = idir1 / direct_integrated.clone();
-        let dif_div = idif1 / diffuse_integrated.clone();
+        let dir_div = idir1 / &direct_integrated;
+        let dif_div = idif1 / &diffuse_integrated;
 
         for l in 0..WL_COUNT {
             direct[l] = direct[l] + dir_div;
@@ -148,7 +153,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
         }
 
         // compute surface irradiance from total daily surface irradiance (e.g. satellite par)
-        par_surface_irradiance[t] = iom.clone() * (PI * (time_array[t].clone() - (sunrise)) / day_length.clone()).sin();
+        par_surface_irradiance[t] = iom * (PI * (time_array[t] - (sunrise)) / day_length).sin();
         surface_irradiance[t] = surface_irradiance[t] * DELTA_LAMBDA;
 
 
@@ -166,17 +171,17 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
         }
 
         let mut pp_profile = compute_pp_depth_profile(
-            chl_profile.clone(),
-            depth_array.clone(),
+            chl_profile,
+            depth_array,
             zenith_array[t],
             direct,
             diffuse,
-            input.bw.clone(),
-            input.bbr.clone(),
-            input.ay.clone(),
-            input.alpha_b.clone(),
-            input.pmb.clone(),
-            input.yel_sub.clone(),
+            input.bw,
+            input.bbr,
+            input.ay,
+            input.alpha_b,
+            input.pmb,
+            input.yel_sub,
         );
 
         if pp_profile.success == true {
@@ -200,10 +205,10 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
             pp[t] = pp[t]
                 + pp_profile.pp_profile[pp_profile.euph_index]
                     * (euphotic_depth[t]
-                        - (pp_profile.euph_index.clone() as f64 - 1.0) * DEPTH_PROFILE_STEP);
+                        - (pp_profile.euph_index as f64 - 1.0) * DEPTH_PROFILE_STEP);
 
             // TODO: Double check we should be dividing by euph index here and not euphotic depth
-            spectral_i_star_sum = spectral_i_star_sum + (pp_profile.spectral_i_star / (pp_profile.euph_index.clone() as f64).abs());
+            spectral_i_star_sum = spectral_i_star_sum + (pp_profile.spectral_i_star / (pp_profile.euph_index as f64).abs());
             spectral_i_star_count = spectral_i_star_count + 1.0;
         }
     } // time loop
@@ -221,7 +226,7 @@ pub fn calc_pp(input: InputParams) -> (f64, f64, f64) {
     // Irrad_integral_1=2*(((np.sum(irrads[start_time_idx:])-irrads[-1]/2)*delta_t)+pre_start_sun)
 
     for t in 0..TIMESTEPS - 1 {
-        pp_day = pp_day + ((pp[t] + pp[t + 1]) * delta_t.clone() / 2.0);
+        pp_day = pp_day + ((pp[t] + pp[t + 1]) * delta_t / 2.0);
 
         // spectral_i_star_day = spectral_i_star_day + ((spectral_i_star[t] + spectral_i_star[t + 1]) * delta_t.clone() / 2.0);
         // spectral_i_star_day = spectral_i_star_day + (spectral_i_star[t] + spectral_i_star[t + 1]);
