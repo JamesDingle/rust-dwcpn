@@ -4,6 +4,7 @@ use crate::dwcpn::modules::pp_profile::{calculate_ay, calculate_bbr, calculate_b
 use clap::{Arg, App, value_t};
 use netcdf;
 use indicatif::{ProgressBar, ProgressStyle};
+use netcdf::Variable;
 
 mod dwcpn;
 
@@ -87,26 +88,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let count = lat.len() * lon.len();
     let pb = ProgressBar::new(count as u64);
-    pb.set_draw_delta(100);
+    pb.set_draw_delta(1000);
     pb.set_style(ProgressStyle::default_bar()
         .template("{msg} {spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {percent}% [{pos:>7}/{len:7} @ {per_sec}] (ETA: {eta})")
         .progress_chars("#>-"));
 
-    // for y in 0..lat.len() {
-    //     for x in 0..lon.len() {
     for y in 0..lat.len() {
         for x in 0..lon.len() {
             pb.inc(1);
-
-            if (chl_data[[y, x]] == 9969209968386869000000000000000000000.0)
-                || (par_data[[y, x]] == 9969209968386869000000000000000000000.0)
-                || (bathymetry_data[[y, x]] == 9969209968386869000000000000000000000.0)
-                || (mld_data[[y, x]] == 9969209968386869000000000000000000000.0)
-                || (pi_alpha_data[[y, x]] == -999.0)
-                || (pi_pmb_data[[y, x]] == -999.0)
-                || (zm_data[[y, x]] == -999.0)
-                || (rho_data[[y, x]] == -999.0)
-                || (sigma_data[[y, x]] == -999.0)
+            if check_if_filled(chl_data[[y,x]], chl)
+                || check_if_filled(par_data[[y, x]], par)
+                || check_if_filled(bathymetry_data[[y, x]], bathymetry)
+                || check_if_filled(mld_data[[y, x]], mld)
+                || check_if_filled(pi_alpha_data[[y, x]], pi_alpha)
+                || check_if_filled(pi_pmb_data[[y, x]], pi_pmb)
+                || check_if_filled(zm_data[[y, x]], zm)
+                || check_if_filled(rho_data[[y, x]], rho)
+                || check_if_filled(sigma_data[[y, x]], sigma)
             {
                 continue;
             }
@@ -154,4 +152,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut spectral_i_star_var = ncfile.variable_mut("spectral_i_star_mean").unwrap();
     &spectral_i_star_var.put_values(&spectral_i_star_mean_data, None, None);
     Ok(())
+}
+
+fn check_if_filled<T: PartialEq + netcdf::Numeric>(value: T, variable: &Variable) -> bool {
+    match variable.fill_value::<T>() {
+        Ok(f) => match f {
+            Some(fill_value) => fill_value == value,
+            None => false
+        },
+        Err(_) => false
+    }
 }
