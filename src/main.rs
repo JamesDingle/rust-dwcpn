@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .version("0.1.0")
         .arg(Arg::with_name("inputfile")
             .short("i")
-            .long("filename")
+            .long("inputfile")
             .help("location of netcdf file to run the model on")
             .required(true)
             .takes_value(true)
