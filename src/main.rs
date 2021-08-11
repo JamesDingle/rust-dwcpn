@@ -12,8 +12,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Argument parsing
     let args = App::new("DWCPN Primary Production Model")
         .version("0.1.0")
-        .arg(Arg::with_name("filename")
-            .short("f")
+        .arg(Arg::with_name("inputfile")
+            .short("i")
             .long("filename")
             .help("location of netcdf file to run the model on")
             .required(true)
