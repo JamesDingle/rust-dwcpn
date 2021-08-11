@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .get_matches();
 
-    let filename = args.value_of("filename").unwrap();
+    let filename = args.value_of("inputfile").unwrap();
     let jday = value_t!(args.value_of("jday"), u16).unwrap();
 
     let settings = ModelSettings {
