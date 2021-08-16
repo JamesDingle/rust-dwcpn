@@ -13,9 +13,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Argument parsing
     let args = App::new("DWCPN Primary Production Model")
         .version("0.1.0")
-        .arg(Arg::with_name("filename")
-            .short("f")
-            .long("filename")
+        .arg(Arg::with_name("inputfile")
+            .short("i")
+            .long("inputfile")
             .help("location of netcdf file to run the model on")
             .required(true)
             .takes_value(true)
@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .get_matches();
 
-    let filename = args.value_of("filename").unwrap();
+    let filename = args.value_of("inputfile").unwrap();
     let jday = value_t!(args.value_of("jday"), u16).unwrap();
 
     let settings = ModelSettings {
