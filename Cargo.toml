@@ -2,15 +2,16 @@
 name = "rust-dwcpn"
 version = "0.1.0"
 authors = ["James Dingle <jad@pml.ac.uk>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = "2.33.3"
-netcdf = "0.5.2"
-ndarray = "0.14.0"
-indicatif = "0.15.0"
+clap = "2.34.0"
+# hdf5-sys = "0.8.1"
+netcdf = "0.6.1"
+ndarray = "0.15.4"
+indicatif = "0.16.2"
 
 [profile.release]
 lto = "fat"

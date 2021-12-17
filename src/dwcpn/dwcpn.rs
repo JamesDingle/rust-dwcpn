@@ -214,22 +214,9 @@ pub fn calc_pp(input: &ModelInputs, settings: &ModelSettings) -> (f64, f64, f64)
     } // time loop
 
     let mut pp_day = pp[0] * delta_prestart / 2.0;
-    // let mut spectral_i_star_day = spectral_i_star[0] * (zenith_80_time - sunrise) / 2.0;
-
-    // let mut z_phot_day = euphotic_depth[0] * i_zero[0] * delta_prestart / 2.0;
-    // let mut i_zero_day = i_zero[0] * delta_prestart / 2.0;
-
     let mut max_euphotic_depth: f64 = 0.0;
-
-    // delta_prestart=start_time-sunrise
-    // pre_start_sun=irrads[start_time_idx]*delta_prestart/2.
-    // Irrad_integral_1=2*(((np.sum(irrads[start_time_idx:])-irrads[-1]/2)*delta_t)+pre_start_sun)
-
     for t in 0..TIMESTEPS - 1 {
         pp_day = pp_day + ((pp[t] + pp[t + 1]) * delta_t / 2.0);
-
-        // spectral_i_star_day = spectral_i_star_day + ((spectral_i_star[t] + spectral_i_star[t + 1]) * delta_t.clone() / 2.0);
-        // spectral_i_star_day = spectral_i_star_day + (spectral_i_star[t] + spectral_i_star[t + 1]);
 
         if max_euphotic_depth.abs() < euphotic_depth[t].abs() {
             max_euphotic_depth = euphotic_depth[t].abs();
@@ -245,8 +232,6 @@ pub fn calc_pp(input: &ModelInputs, settings: &ModelSettings) -> (f64, f64, f64)
 
     // mutliply by two because we have only integrated over half of the day
     pp_day = pp_day * 2.0;
-    spectral_i_star_mean = spectral_i_star_mean * 2.0;
-    // let spectral_i_star_mean = spectral_i_star_day / TIMESTEPS as f64;
     return (pp_day, max_euphotic_depth, spectral_i_star_mean);
 
 }
